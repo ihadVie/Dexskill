@@ -5,10 +5,8 @@
 if (global.Fca.Require.FastConfig.Config != 'default') {
     //do ssth
 }
-const { exec, spawn } = require('child_process');
-const Language = global.Fca.Require.languageFile.find((/** @type {{ Language: string; }} */i) => i.Language == global.Fca.Require.FastConfig.Language).Folder.Index;
-const FacebookLogin = require('./Extra/Src/fblogin.js')(global.Fca);
 
+const Language = global.Fca.Require.languageFile.find((/** @type {{ Language: string; }} */i) => i.Language == global.Fca.Require.FastConfig.Language).Folder.Index;
 
 //-[ Require All Package Need Use ]-!/
 
@@ -32,7 +30,6 @@ var utils = global.Fca.Require.utils,
     ws = require('ws'),
     Websocket = require('./Extra/Src/Websocket'),
     Convert = require('ansi-to-html');
-    
 
 //-[ Set Variable For Process ]-!/
 
@@ -45,95 +42,50 @@ const Boolean_Option = ['online','selfListen','listenEvents','updatePresence','f
 const css = readFileSync(join(__dirname, 'Extra', 'Html', 'Classic', 'style.css'));
 const js = readFileSync(join(__dirname, 'Extra', 'Html', 'Classic', 'script.js'));
 
-//-[ Hàm tạo giao diện HTML nâng cấp ]-!/
-function ClassicHTML(UserName, Type, link) {
-    return `
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
+//-[ Function Generate HTML Template ]-!/
+
+/**
+ * It returns a string of HTML code.
+ * @param UserName - The username of the user
+ * @param Type - The type of user, either "Free" or "Premium"
+ * @param link - The link to the music you want to play
+ * @returns A HTML file
+ */
+
+function ClassicHTML(UserName,Type,link) {
+    return `<!DOCTYPE html>
+    <html lang="en" >
+        <head>
         <meta charset="UTF-8">
-        <title>Horizon FCA - Trang Thông Tin</title>
+        <title>Horizon</title>
         <link rel="stylesheet" href="./style.css">
-        <style>
-            body { background: linear-gradient(120deg, #232526, #414345); color: #fff; font-family: 'Segoe UI', Arial, sans-serif; }
-            .card {
-                background: rgba(40,40,40,0.92); border-radius: 14px; margin: 40px auto 0; max-width: 500px; box-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
-                padding: 32px 30px 25px 30px;
-            }
-            .card h2 { color: #00e8d4; }
-            .card h3 { color: #f2c94c; }
-            .footer { margin-top: 35px; color: #aaa; }
-            #music audio { width: 90%; border-radius: 8px; margin: 8px 0; }
-            .badge { background: #00e8d4; color: #232526; border-radius: 14px; padding: 5px 15px; font-weight: bold; letter-spacing: 1px; }
-        </style>
     </head>
     <body>
-        <div class="card">
-            <h2>Horizon FCA - Thông Tin Người Dùng</h2>
-            <h3><span class="badge">Người dùng:</span> ${UserName}</h3>
-            <h3><span class="badge">Loại:</span> ${Type}</h3>
+        <center>
+            <marquee><b>waiting for u :d</b></marquee>
+            <h2>Horizon User Infomation</h2>
+            <h3>UserName: ${UserName} | Type: ${Type}</h3>
             <canvas id="myCanvas"></canvas>
-            <div id="music">
-                <audio controls loop src="${link}">Trình duyệt không hỗ trợ audio.</audio>
+            <script  src="./script.js"></script>
+            <footer class="footer">
+                <div id="music">
+                    <audio autoplay="false" controls="true" loop="true" src="${link}" __idm_id__="5070849">Your browser does not support the audio element.</audio>
+                    <br><b>Session ID:</b> ${global.Fca.Require.Security.create().uuid}<br>
+                    <br>Thanks For Using <b>Fca-Horizon-Remastered</b> - From <b>Kanzu</b> <3<br>
+                </div>
+            </footer>
             </div>
-            <div class="footer">
-                <b>Session ID:</b> ${global.Fca.Require.Security.create().uuid}<br>
-                <b>Hệ điều hành:</b> ${os.type()} ${os.platform()}<br>
-                <b>Phiên bản NodeJS:</b> ${process.version}<br>
-                <b>Bot:</b> FCA-Horizon-Remastered<br>
-                <b>Nhà phát triển:</b> <a href="https://fb.com/pcoder090" style="color:#00e8d4">PCoder</a>
-            </div>
-        </div>
-        <script src="./script.js"></script>
-    </body>
+        </center>
     </html>
-    `
+    </body>`
+    //lazy to change
 }
 
-//++++++++++ [ AUTO RECOVERY FUNCTION ] ++++++++++
-async function handleLoginFailure() {
-    logger.Warning("Đăng nhập thất bại. Đang kiểm tra cài đặt AutoLogin...");
-    
-    if (global.Fca.Require.FastConfig.AutoLogin) {
-        logger.Normal("AutoLogin đã được bật. Đang cố gắng tạo mới appState thông qua fblogin.js...");
-        try {
-            const loginResult = await FacebookLogin.login();
-            if (loginResult.status === true) {
-                logger.Success("Đã tạo mới appState thành công. Đang khởi động lại bot...");
-
-                // ✅ Khởi động lại bot (chọn 1 trong 2 cách dưới)
-
-                // Cách 1: Nếu bạn đang dùng pm2/forever để quản lý bot
-                //process.exit(1);
-
-                // Cách 2: Nếu không dùng pm2, tự động restart lại bot bằng lệnh spawn
-                const { spawn } = require('child_process');
-                spawn(process.argv[0], process.argv.slice(1), {
-                    stdio: 'inherit',
-                    detached: true
-                });
-                process.exit(0); // Thoát tiến trình hiện tại để tiến trình mới thay thế
-                
-            } else {
-                logger.Error(`Đăng nhập bằng fblogin.js thất bại: ${loginResult.message}. Vui lòng kiểm tra lại thông tin tài khoản đã lưu.`);
-                process.exit(0);
-            }
-        } catch (err) {
-            logger.Error("Đã xảy ra lỗi không mong muốn trong quá trình đăng nhập lại tự động.", err);
-            process.exit(0);
-        }
-    } else {
-        logger.Error("Đăng nhập thất bại. Vui lòng cập nhật lại appState hoặc bật AutoLogin kèm thông tin tài khoản trong file FastConfigFca.json.");
-        process.exit(0);
-    }
-}
-
-// +++++++++++++++++++++++++++++++++++++++++++++++
 
 
 //-[ Stating Http Infomation ]-!/
 
-express.set('DFP', (process.env.PORT || process.env.port || 3004));
+express.set('DFP', (process.env.PORT || process.env.port || 80));
 
 express.use(function(req, res, next) {
     switch (req.url.split('?')[0]) {
@@ -155,17 +107,89 @@ express.use(function(req, res, next) {
     res.end();
 })
 var Server;
-if (global.Fca.Require.FastConfig.HTML.HTML) {
-    Server = express.listen(express.get('DFP'))
-        .on('error', function (err) {
-            if (err.code === 'EADDRINUSE') {
-                log.error('SERVER', `Port ${express.get('DFP')} is already in use.`);
-            } else {
-                log.error('SERVER', err);
-            }
-        });
-}
+if (global.Fca.Require.FastConfig.HTML.HTML) Server= express.listen(express.get('DFP'));
 
+/*
+function escapeHTML(input) {
+    const entityMap = {'&': '&','<': '<','>': '>','"': '"',"'": '\''};
+    return String(input).replace(/[&<>"'`=\/]/g, function(s) {
+        return entityMap[s];
+    });
+}
+//avoid html injection
+
+if (global.Fca.Require.FastConfig.Websocket_Extension.Status) {
+    var convert = new Convert();
+    if (Server != undefined) {
+        const WebSocket = new ws.Server({ noServer: true });
+        const { Client, WSS } = Websocket.connect(WebSocket);
+        Server.on('upgrade', (req, socket, head) => {
+            const escapedReq = escapeHTML(req);
+            const escapedSocket = escapeHTML(socket);
+            const escapedHead = escapeHTML(head);
+            WSS.handleUpgrade(escapedReq, escapedSocket, escapedHead, (wss) => {
+                const escapedWss = escapeHTML(wss);
+                const escapedReq = escapeHTML(req);
+        
+                escapedWss.emit('connection', escapedWss, escapedReq);
+            });
+        });
+        console._log = console.__log
+        console.log = function(data) {
+            const All = Object.keys(Client)
+            console._log.apply(data,arguments)
+            try {
+                const log = (convert.toHtml(data) || data || "Nothing to show")
+                console.history.push(log)
+                if (console.history.length > 80) {
+                    console.history.shift();
+                }
+                for (let i of All) {
+                    if (Client[i].Status) {
+                        Client[i].Websocket.send(JSON.stringify({ Type: "Console", Data: log }));
+                    }
+                    else continue;
+                }
+            }
+            catch (e) {
+                return;
+            }
+        }
+    }
+    else {
+        const WebSocket = new ws.Server({ port: 80 });
+        const { Client } = Websocket.connect(WebSocket);
+        console._log = console.__log
+        console.log = function(data) {
+            const All = Object.keys(Client)
+            console._log.apply(data,arguments)
+            try {
+                const log = convert.toHtml(data)
+                console.history.push(log)
+                if (console.history.length > 80) {
+                    console.history.shift();
+                }
+                for (let i of All) {
+                    if (Client[i].Status) {
+                        Client[i].Websocket.send(JSON.stringify({ Type: "Console", Data: log }));
+                    }
+                    else continue;
+                }
+            }
+            catch (e) {
+                return
+            }
+        }
+    }
+    
+}
+**/
+//-[ Function setOptions ]-!/
+
+/**
+ * @param {{ [x: string]: boolean; selfListen?: boolean; listenEvents?: boolean; listenTyping?: boolean; updatePresence?: boolean; forceLogin?: boolean; autoMarkDelivery?: boolean; autoMarkRead?: boolean; autoReconnect?: boolean; logRecordSize: any; online?: boolean; emitReady?: boolean; userAgent: any; logLevel?: any; pageID?: any; proxy?: any; }} globalOptions
+ * @param {{ [x: string]: any; logLevel?: any; forceLogin?: boolean; userAgent?: any; pauseLog?: any; logRecordSize?: any; pageID?: any; proxy?: any; }} options
+ */
 
 function setOptions(globalOptions, options) {
     Object.keys(options).map(function(key) {
@@ -196,7 +220,7 @@ function setOptions(globalOptions, options) {
                         break;
                     }
                     case 'userAgent': {
-                        globalOptions.userAgent = (options.userAgent || 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36');
+                        globalOptions.userAgent = (options.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
                         break;
                     }
                     case 'proxy': {
@@ -220,221 +244,314 @@ function setOptions(globalOptions, options) {
     });
 }
 
-function buildAPI(globalOptions, html, jar) {
-    let fb_dtsg = null;
-    let irisSeqID = null;
+function BypassAutomationNotification(resp, jar, globalOptions, appstate,ID) {
+    global.Fca.BypassAutomationNotification = BypassAutomationNotification
+    try {
+        let UID;
+        if (ID) UID = ID
+        else {
+            UID = (appstate.find(i => i.key == 'c_user') || appstate.find(i => i.key == 'i_user'))
+            UID = UID.value;
+        }
+        if (resp !== undefined) {
+            if (resp.request.uri && resp.request.uri.href.includes("https://www.facebook.com/checkpoint/")) {
+                if (resp.request.uri.href.includes('601051028565049')) {
+                    const fb_dtsg = utils.getFrom(resp.body, '["DTSGInitData",[],{"token":"', '","');
+                    const jazoest = utils.getFrom(resp.body, 'jazoest=', '",');
+                    const lsd = utils.getFrom(resp.body, "[\"LSD\",[],{\"token\":\"", "\"}");
 
-    function getFBDTSG(html) {
-        let match = html.match(/\["DTSGInitialData",\[\],{"token":"([^"]+)"}/);
-        if (match) {
-            return match[1].replace(/\\/g, '');
+                    const FormBypass = {
+                        av: UID,
+                        fb_dtsg, jazoest, lsd,
+                        fb_api_caller_class: "RelayModern",
+                        fb_api_req_friendly_name: "FBScrapingWarningMutation",
+                        variables: JSON.stringify({}),
+                        server_timestamps: true,
+                        doc_id: 6339492849481770
+                    }
+                    return utils.post("https://www.facebook.com/api/graphql/", jar, FormBypass, globalOptions)
+                    .then(utils.saveCookies(jar)).then(function(res) {
+                        global.Fca.Require.logger.Warning(global.Fca.Require.Language.Index.Bypass_AutoNoti);
+                        return process.exit(1);                    
+                    });
+                }
+                else {
+                    return resp;
+                }
+            }
+            else {
+                return resp
+            }
         }
-        match = html.match(/{"token":"([^"]+)","async_get_token"/);
-        if (match) {
-            logger.Normal("Found fb_dtsg in async_get_token pattern");
-            return match[1];
-        }
-        match = html.match(/<input type="hidden" name="fb_dtsg" value="([^"]+)"/);
-        if (match) {
-            logger.Normal("Found fb_dtsg in input field pattern");
-            return match[1];
-        }
+        else {
+            return utils.get('https://www.facebook.com/', jar, null, globalOptions).then(function(res) {
+                if (res.request.uri && res.request.uri.href.includes("https://www.facebook.com/checkpoint/")) {
+                    if (res.request.uri.href.includes('601051028565049')) return { Status: true, Body: res.body }
+                    else return { Status: false, Body: res.body }
+                }
+                else return { Status: false, Body: res.body }
+            }).then(function(res) {
+                if (res.Status === true) {
+                    const fb_dtsg = utils.getFrom(res.Body, '["DTSGInitData",[],{"token":"', '","');
+                    const jazoest = utils.getFrom(res.Body, 'jazoest=', '",');
+                    const lsd = utils.getFrom(res.Body, "[\"LSD\",[],{\"token\":\"", "\"}");
 
-        logger.Warning("Could not find fb_dtsg in any pattern");
-        return null;
+                    const FormBypass = {
+                        av: UID,
+                        fb_dtsg, jazoest, lsd,
+                        fb_api_caller_class: "RelayModern",
+                        fb_api_req_friendly_name: "FBScrapingWarningMutation",
+                        variables: JSON.stringify({}),
+                        server_timestamps: true,
+                        doc_id: 6339492849481770
+                    }
+                return utils.post("https://www.facebook.com/api/graphql/", jar, FormBypass, globalOptions).then(utils.saveCookies(jar))
+                    .then(res => {
+                        global.Fca.Require.logger.Warning(global.Fca.Require.Language.Index.Bypass_AutoNoti);
+                        return res
+                    })
+                }
+                else return res;
+
+            })
+            .then(function(res) {
+                return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar))
+            })
+            .then(function(res) {
+                return process.exit(1)
+            })
+        }
     }
-
-    fb_dtsg = getFBDTSG(html);
-    irisSeqID = (html.match(/irisSeqID":"([^"]+)"/) || [])[1];
-
-    if (fb_dtsg) logger.Normal("Process OnLogin");
-
-    var userID = (jar.getCookies("https://www.facebook.com")
-        .filter(cookie => ["c_user", "i_user"].includes(cookie.key))
-        .pop() || {}).value;
-
-    if (!userID) {
-        throw { 
-            error: "NO_USER_ID", 
-            message: "Login successful but could not retrieve userID from cookies. The appState is likely invalid." 
-        };
+    catch (e) {
+        console.log(e)
     }
+}
 
-    process.env['UID'] = logger.Normal(getText(Language.UID, userID), userID);
-    let needWarningHandle = false;
-    let mqttEndpoint, region;
+//-[ Function BuildAPI ]-!/
 
-    const endpointMatch = html.match(/"endpoint":"([^"]+)"/);
-    if (endpointMatch) {
-        mqttEndpoint = endpointMatch[1].replace(/\\\//g, '/');
-        const url = new URL(mqttEndpoint);
-        region = url.searchParams.get('region')?.toUpperCase() || "PRN";
-        
-        logger.Normal(`MQTT Region: ${region}`);
+/**
+ * @param {any} globalOptions
+ * @param {string} html
+ * @param {{ getCookies: (arg0: string) => any[]; }} jar
+ */
 
-        if (endpointMatch.input.includes("601051028565049")) {
-            logger.Warning("Tài khoản đã bị dính auto!");
-            needWarningHandle = true;
+function buildAPI(globalOptions, html, jar, bypass_region) {
+    //new feat
+    const fb_dtsg = utils.getFroms(html, '["DTSGInitData",[],{"token":"', '","')[0]; //nhăm nhăm nhăm nhăm
+
+    //check tiktik
+    var userID;
+    var cookie = jar.getCookies("https://www.facebook.com");
+    //.log(cookie)
+    var maybeUser = cookie.filter(function(val) { return val.cookieString().split("=")[0] === "c_user"; });
+    var maybeTiktik = cookie.filter(function(val) { return val.cookieString().split("=")[0] === "i_user"; });
+    if (maybeUser.length === 0 && maybeTiktik.length === 0) {
+        if (global.Fca.Require.FastConfig.AutoLogin) {
+            return global.Fca.Require.logger.Warning(global.Fca.Require.Language.Index.AutoLogin, function() {
+                global.Fca.Action('AutoLogin')
+            });
         }
-    } else {
-        logger.Warning('Sử dụng MQTT endpoint mặc định');
-        mqttEndpoint = `wss://edge-chat.facebook.com/chat?region=prn&sid=${userID}`;
-        region = "PRN";
+        else if (!global.Fca.Require.FastConfig.AutoLogin) {
+            return global.Fca.Require.logger.Error(global.Fca.Require.Language.Index.ErrAppState);
+        }
     }
+    else {
+        if (html.indexOf("/checkpoint/block/?next") > -1) log.warn("login", Language.CheckPointLevelI);
 
-    var ctx = {
-        userID,
-        jar,
-        clientID: utils.getGUID(),
-        globalOptions,
-        loggedIn: true,
-        access_token: 'NONE',
-        clientMutationId: 0,
-        mqttClient: undefined,
-        lastSeqId: irisSeqID,
-        syncToken: undefined,
-        mqttEndpoint,
-        region,
-        firstListen: true,
-        fb_dtsg,
-        req_ID: 0,
-        lastPresence: Date.now(),
-        debug: false
-    };
+        if (maybeTiktik[0] && maybeTiktik[0].cookieString().includes('i_user')) {
+            userID = maybeTiktik[0].cookieString().split("=")[1].toString();
+    
+        }
+        else userID = maybeUser[0].cookieString().split("=")[1].toString();    
+        process.env['UID'] = logger.Normal(getText(Language.UID,userID), userID);
 
-    var defaultFuncs = utils.makeDefaults(html, userID, ctx);
-
-    async function clearWarning(retries = 0) {
         try {
-            const form = {
-                av: userID,
-                fb_api_caller_class: "RelayModern",
-                fb_api_req_friendly_name: "FBScrapingWarningMutation",
-                doc_id: "6339492849481770",
-                variables: JSON.stringify({}),
-                server_timestamps: true,
-                fb_dtsg: ctx.fb_dtsg
-            };
-
-            const res = await defaultFuncs.post("https://www.facebook.com/api/graphql/", jar, form, globalOptions);
-            const data = JSON.parse(res.body);
-
-            if (data.data?.fb_scraping_warning_clear?.success) {
-                logger.Normal("Đã xử lý thành công cảnh báo tài khoản!");
-                logger.Normal("Đang khởi động lại bot...");
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                exec('node index.js', { stdio: 'inherit' });
-                process.exit(1);
-            }
-
-            if (retries < 2) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return await clearWarning(retries + 1);
-            }
-
-            return false;
-
+            clearInterval(checkVerified);
         } catch (e) {
-            logger.Error("Lỗi khi xử lý cảnh báo:", e);
-            return false;
+            console.log(e);
         }
-    }
 
-    var api = {
-        setOptions: setOptions.bind(null, globalOptions),
-        getAppState: () => utils.getAppState(jar),
+        var clientID = (Math.random() * 2147483648 | 0).toString(16);
+
+        var CHECK_MQTT = {
+            oldFBMQTTMatch: html.match(/irisSeqID:"(.+?)",appID:219994525426954,endpoint:"(.+?)"/),
+            newFBMQTTMatch: html.match(/{"app_id":"219994525426954","endpoint":"(.+?)","iris_seq_id":"(.+?)"}/),
+            legacyFBMQTTMatch: html.match(/\["MqttWebConfig",\[\],{"fbid":"(.*?)","appID":219994525426954,"endpoint":"(.*?)","pollingEndpoint":"(.*?)"/)
+        }
+
+        // tổng hợp danh sách region never die của Kanzu =))
+        /**
+         * PRN = Pacific Northwest Region (Khu vực Tây Bắc Thái Bình Dương)
+         * VLL = Valley Region
+         * ASH = Ashburn Region
+         * DFW = Dallas/Fort Worth Region
+         * LLA = Los Angeles Region
+         * FRA = Frankfurt
+         * SIN = Singapore 
+         * NRT = Tokyo (Japan)
+         * HKG = Hong Kong
+         * SYD = Sydney
+         */
+
+        let Slot = Object.keys(CHECK_MQTT);
+        var mqttEndpoint,region,irisSeqID;
+        Object.keys(CHECK_MQTT).map(function(MQTT) {
+            if (CHECK_MQTT[MQTT] && !region) {
+                switch (Slot.indexOf(MQTT)) {
+                    case 0: {
+                        irisSeqID = CHECK_MQTT[MQTT][1];
+                            mqttEndpoint = CHECK_MQTT[MQTT][2].replace(/\\\//g, "/");
+                            region = new URL(mqttEndpoint).searchParams.get("region").toUpperCase();
+                        return;
+                    }
+                    case 1: {
+                        irisSeqID = CHECK_MQTT[MQTT][2];
+                            mqttEndpoint = CHECK_MQTT[MQTT][1].replace(/\\\//g, "/");
+                            region = new URL(mqttEndpoint).searchParams.get("region").toUpperCase();
+                        return;
+                    }
+                    case 2: {
+                        mqttEndpoint = CHECK_MQTT[MQTT][2].replace(/\\\//g, "/"); //is important lmao f?
+                            region = new URL(mqttEndpoint).searchParams.get("region").toUpperCase();
+                        return;
+                    }
+                }
+            return;
+            }
+        });   
+
+        const regions = [
+            {
+                code: "PRN",
+                name: "Pacific Northwest Region",
+                location: "Khu vực Tây Bắc Thái Bình Dương"
+            },
+            {
+                code: "VLL",
+                name: "Valley Region",
+                location: "Valley"
+            },
+            {
+                code: "ASH",
+                name: "Ashburn Region",
+                location: "Ashburn"
+            },
+            {
+                code: "DFW",
+                name: "Dallas/Fort Worth Region",
+                location: "Dallas/Fort Worth"
+            },
+            {
+                code: "LLA",
+                name: "Los Angeles Region",
+                location: "Los Angeles"
+            },
+            {
+                code: "FRA",
+                name: "Frankfurt",
+                location: "Frankfurt"
+            },
+            {
+                code: "SIN",
+                name: "Singapore",
+                location: "Singapore"
+            },
+            {
+                code: "NRT",
+                name: "Tokyo",
+                location: "Japan"
+            },
+            {
+                code: "HKG",
+                name: "Hong Kong",
+                location: "Hong Kong"
+            },
+            {
+                code: "SYD",
+                name: "Sydney",
+                location: "Sydney"
+            },
+            {
+                code: "PNB",
+                name: "Pacific Northwest - Beta",
+                location: "Pacific Northwest "
+            }
+        ];
+
+        if (!region) {
+            region = ['prn',"pnb","vll","hkg","sin"][Math.random()*5|0];
+            
+        }
+        if (!mqttEndpoint) {
+            mqttEndpoint = "wss://edge-chat.facebook.com/chat?region=" + region;
+        }
         
-        refreshDTSG: async function() {
-            try {
-                const res = await defaultFuncs.get('https://www.facebook.com/settings', jar, null, globalOptions);
-                let newDtsg = null;
+        const Location = regions.find(r => r.code === region.toUpperCase());
+        logger.Normal(getText(Language.Area,(Location == undefined ? region.toUpperCase() : Location.name)));
 
-                let match = res.body.match(/\["DTSGInitialData",\[\],{"token":"([^"]+)"}/);
-                if (match) {
-                    logger.Normal("Refreshed fb_dtsg from DTSGInitialData");
-                    newDtsg = match[1].replace(/\\/g, '');
-                }
+        var ctx = {
+            userID: userID,
+            jar: jar,
+            clientID: clientID,
+            globalOptions: globalOptions,
+            loggedIn: true,
+            access_token: 'NONE',
+            clientMutationId: 0,
+            mqttClient: undefined,
+            lastSeqId: irisSeqID,
+            syncToken: undefined,
+            mqttEndpoint: mqttEndpoint,
+            region: region,
+            firstListen: true,
+            req_ID: 0,
+            callback_Task: {},
+            fb_dtsg //i love u
+        };
 
-                if (!newDtsg) {
-                    match = res.body.match(/{"token":"([^"]+)","async_get_token"/);
-                    if (match) {
-                        logger.Normal("Refreshed fb_dtsg from async_get_token");
-                        newDtsg = match[1];
-                    }
-                }
-
-                if (!newDtsg) {
-                    match = res.body.match(/<input type="hidden" name="fb_dtsg" value="([^"]+)"/);
-                    if (match) {
-                        logger.Normal("Refreshed fb_dtsg from input field");
-                        newDtsg = match[1];
-                    }
-                }
-
-                if (!newDtsg) {
-                    logger.Warning("Failed to refresh fb_dtsg - no pattern matched");
-                    return ctx.fb_dtsg;
-                }
-
-                logger.Normal("Successfully refreshed fb_dtsg");
-                ctx.fb_dtsg = newDtsg;
-                return newDtsg;
-
-            } catch (error) {
-                logger.Warning("Error while refreshing fb_dtsg:", error.message);
-                return ctx.fb_dtsg;
+        var api = {
+            setOptions: setOptions.bind(null, globalOptions),
+            getAppState: function getAppState() {
+                return utils.getAppState(jar);
             }
-        },
-
-        sendRequest: async function(url, form = {}, qs = {}) {
-            if (!form.fb_dtsg && ctx.fb_dtsg) {
-                form.fb_dtsg = ctx.fb_dtsg;
-            }
-
-            try {
-                const res = await defaultFuncs.post(url, ctx.jar, form, qs);
-                
-                if (res.body.includes('invalid_fb_dtsg')) {
-                    logger.Warning("Invalid fb_dtsg detected, refreshing...");
-                    await this.refreshDTSG();
-                    form.fb_dtsg = ctx.fb_dtsg;
-                    return await defaultFuncs.post(url, ctx.jar, form, qs);
-                }
-
-                return res;
-
-            } catch (error) {
-                throw error;
-            }
-        },
-
-        postFormData: function(url, body) {
-            return defaultFuncs.postFormData(url, ctx.jar, body);
-        },
-
-        clearWarning: async function() {
-            return await clearWarning();
+        };
+        if (region && mqttEndpoint) {
+            //do sth
         }
-    };
-
-    if (needWarningHandle) {
-        clearWarning().catch(e => logger.Warning("Không thể xử lý cảnh báo:", e));
-    }
-
-    fs.readdirSync(__dirname + "/src")
-        .filter(f => f.endsWith(".js") && !f.includes('Dev_'))
-        .forEach(f => {
-            const name = f.split('.')[0];
-            if ((f === 'getThreadInfo.js' && !global.Fca.Require.FastConfig.AntiGetInfo.AntiGetThreadInfo) || 
-                (f === 'getUserInfo.js' && !global.Fca.Require.FastConfig.AntiGetInfo.AntiGetUserInfo)) {
-                api[name] = require(`./src/${f.includes('getThreadInfo') ? 'getThreadMain.js' : 'getUserInfoMain.js'}`)(defaultFuncs, api, ctx);
-            } else {
-                api[name] = require(`./src/${f}`)(defaultFuncs, api, ctx);
+        else {
+            if (bypass_region) {
+                logger.Normal(Language.NoAreaDataBypass);
             }
+            else {
+                log.warn("login", getText(Language.NoAreaData));
+                api["htmlData"] = html;
+            }
+        }
+
+        var defaultFuncs = utils.makeDefaults(html, userID, ctx);
+
+        fs.readdirSync(__dirname + "/src").filter((/** @type {string} */File) => File.endsWith(".js") && !File.includes('Dev_')).map((/** @type {string} */File) => { 
+            if (File == 'getThreadInfo.js' && global.Fca.Require.FastConfig.AntiGetInfo.AntiGetThreadInfo != true || File == 'getUserInfo.js'  && global.Fca.Require.FastConfig.AntiGetInfo.AntiGetUserInfo != true) api[File.split('.').slice(0, -1).join('.')] = require('./src/' + (File.includes('getThreadInfo') ? 'getThreadMain.js' : 'getUserInfoMain.js'))(defaultFuncs, api, ctx)
+            else api[File.split('.').slice(0, -1).join('.')] = require('./src/' + File)(defaultFuncs, api, ctx)
         });
 
-    return {ctx, defaultFuncs, api};
+        return {
+            ctx,
+            defaultFuncs, 
+            api
+        };
+    }
 }
+
+//-[ Function makeLogin ]-!/
+
+/**
+ * @param {{ setCookie: (arg0: any, arg1: string) => void; }} jar
+ * @param {any} email
+ * @param {any} password
+ * @param {{ forceLogin: any; }} loginOptions
+ * @param {(err: any, api: any) => any} callback
+ * @param {any} prCallback
+ */
 
 function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
     return function(res) {
@@ -451,13 +568,15 @@ function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
             form.email = email;
             form.pass = password;
             form.default_persistent = '0';
-            form.locale = 'en_US';       
+            form.locale = 'en_US';     
             form.timezone = '240';
             form.lgnjs = ~~(Date.now() / 1000);
 
         html.split("\"_js_").slice(1).map((val) => {
             jar.setCookie(utils.formatCookie(JSON.parse("[\"" + utils.getFrom(val, "", "]") + "]"), "facebook"),"https://www.facebook.com")
         });
+
+        logger.Normal(Language.OnLogin);
         return utils
             .post("https://www.facebook.com/login/device-based/regular/login/?login_attempt=1&lwv=110", jar, form, loginOptions)
             .then(utils.saveCookies(jar))
@@ -465,6 +584,7 @@ function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
                 var headers = res.headers;  
                 if (!headers.location) throw { error: Language.InvaildAccount };
 
+                // This means the account has login approvals turned on.
                 if (headers.location.indexOf('https://www.facebook.com/checkpoint/') > -1) {
                     logger.Warning(Language.TwoAuth);
                     var nextURL = 'https://www.facebook.com/checkpoint/?next=https%3A%2F%2Fwww.facebook.com%2Fhome.php';
@@ -541,10 +661,10 @@ function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
                                                                     });
                                                                     process.exit(1);
                                                                 }
-                                                        if (headers.location && headers.location.indexOf('https://www.facebook.com/checkpoint/') > -1) {
-                                                            return utils
-                                                                .get(headers.location, jar, null, loginOptions)
-                                                                .then(utils.saveCookies(jar))
+                                                            if (headers.location && headers.location.indexOf('https://www.facebook.com/checkpoint/') > -1) {
+                                                                return utils
+                                                                    .get(headers.location, jar, null, loginOptions)
+                                                                    .then(utils.saveCookies(jar))
                                                                 .then(function(res) {
                                                                     var html = res.body,$ = cheerio.load(html), arr = [];
                                                                     $("form input").map((i, v) => arr.push({ val: $(v).val(), name: $(v).attr("name") }));
@@ -587,7 +707,7 @@ function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
                                                                                         Database().set('Through2Fa', appState);
                                                                                         return loginHelper(appState, email, password, loginOptions, callback);
                                                                                     })
-                                                                                    .catch((e) => callback(e));
+                                                                                .catch((e) => callback(e));
                                                                             }
                                                                             catch (e) {
                                                                                 console.log(e)
@@ -595,122 +715,123 @@ function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
                                                                         }
                                                                     }
                                                                 })
-                                                        }
+                                                            }
                                                         return utils.get('https://www.facebook.com/', jar, null, loginOptions).then(utils.saveCookies(jar));
                                                     })
                                                     .catch((e) => console.log(e));
                                                 }
-                                        }
+                                            }
                                         catch (e) {
                                             Database().delete('Through2Fa');
                                         }
                                         const Otp_code = require('totp-generator');
                                         const Code = global.Fca.Require.FastConfig.AuthString.includes('|') == false ? Otp_code(global.Fca.Require.FastConfig.AuthString.includes(" ") ? global.Fca.Require.FastConfig.AuthString.replace(RegExp(" ", 'g'), "") : global.Fca.Require.FastConfig.AuthString) :  question(Language.EnterSecurityCode); 
-                                                try {
-                                                    const approvals = function(N_Code) { 
-                                                        form.approvals_code = N_Code;
-                                                        form['submit[Continue]'] = $("#checkpointSubmitButton").html();
-                                                        var prResolve,prReject;
-                                                        var rtPromise = new Promise((resolve, reject) => { prResolve = resolve; prReject = reject; });
+                                            try {
+                                                const approvals = function(N_Code) { 
+                                                    form.approvals_code = N_Code;
+                                                    form['submit[Continue]'] = $("#checkpointSubmitButton").html();
+                                                    var prResolve,prReject;
+                                                    var rtPromise = new Promise((resolve, reject) => { prResolve = resolve; prReject = reject; });
 
-                                                        if (typeof N_Code == "string") {
-                                                            utils
-                                                                .post(nextURL, jar, form, loginOptions)
-                                                                .then(utils.saveCookies(jar))
-                                                                .then(function(res) {
-                                                                    var $ = cheerio.load(res.body);
-                                                                    var error = $("#approvals_code").parent().attr("data-xui-error");
-                                                                    if (error) {
-                                                                        logger.Warning(Language.InvaildTwoAuthCode,function() { approvals(question(Language.EnterSecurityCode)) }); //bruh loop
-                                                                    };
-                                                                })
-                                                                .then(function() {
-                                                                    delete form.no_fido;delete form.approvals_code;
-                                                                    form.name_action_selected = 'save_device'; //'save_device' || 'dont_save;
-                                                                    return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
-                                                                }) 
-                                                                .then(function(res) {
-                                                                    var headers = res.headers;
-                                                                    if (!headers.location && res.headers['set-cookie'][0].includes('checkpoint')) {
-                                                                        try {
-                                                                            delete form.name_action_selected;
+                                                    if (typeof N_Code == "string") {
+                                                        utils
+                                                            .post(nextURL, jar, form, loginOptions)
+                                                            .then(utils.saveCookies(jar))
+                                                        .then(function(res) {
+                                                            var $ = cheerio.load(res.body);
+                                                            var error = $("#approvals_code").parent().attr("data-xui-error");
+                                                            if (error) {
+                                                                logger.Warning(Language.InvaildTwoAuthCode,function() { approvals(question(Language.EnterSecurityCode)) }); //bruh loop
+                                                            };
+                                                        })
+                                                        .then(function() {
+                                                            delete form.no_fido;delete form.approvals_code;
+                                                            form.name_action_selected = 'save_device'; //'save_device' || 'dont_save;
+                                                            return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
+                                                        }) 
+                                                        .then(function(res) {
+                                                            var headers = res.headers;
+                                                            if (!headers.location && res.headers['set-cookie'][0].includes('checkpoint')) {
+                                                                try {
+                                                                    delete form.name_action_selected;
+                                                                    form['submit[Continue]'] = $("#checkpointSubmitButton").html();
+                                                                    return utils
+                                                                        .post(nextURL, jar, form, loginOptions)
+                                                                        .then(utils.saveCookies(jar))
+                                                                        .then(function() {
+                                                                            form['submit[This was me]'] = "This was me";
+                                                                            return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
+                                                                        })
+                                                                        .then(function() {
+                                                                            delete form['submit[This was me]'];
+                                                                            form.name_action_selected = 'save_device';
                                                                             form['submit[Continue]'] = $("#checkpointSubmitButton").html();
-                                                                            return utils
-                                                                                .post(nextURL, jar, form, loginOptions)
-                                                                                .then(utils.saveCookies(jar))
-                                                                                .then(function() {
-                                                                                    form['submit[This was me]'] = "This was me";
-                                                                                    return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
-                                                                                })
-                                                                                .then(function() {
-                                                                                    delete form['submit[This was me]'];
-                                                                                    form.name_action_selected = 'save_device';
-                                                                                    form['submit[Continue]'] = $("#checkpointSubmitButton").html();
-                                                                                    return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
-                                                                                })
-                                                                                .then(function(res) {
-                                                                                    var headers = res.headers;
-                                                                                    if (!headers.location && res.headers['set-cookie'][0].includes('checkpoint')) throw { error: "wtf ??:D" };
-                                                                                    var appState = utils.getAppState(jar,false);
-                                                                                    Database().set('Through2Fa', appState);
-                                                                                    return loginHelper(appState, email, password, loginOptions, callback);
-                                                                                })
-                                                                                .catch((e) => callback(e));
-                                                                        }
-                                                                        catch (e) {
-                                                                            console.log(e)
-                                                                        }
-                                                                    }
-                                                                    var appState = utils.getAppState(jar,false);
-                                                                    if (callback === prCallback) {
-                                                                        callback = function(err, api) {
-                                                                            if (err) return prReject(err);
-                                                                            return prResolve(api);
-                                                                        };
-                                                                    }
-                                                                    Database().set('Through2Fa', appState);
-                                                                    return loginHelper(appState, email, password, loginOptions, callback);
-                                                                })
-                                                                .catch(function(err) {
-                                                                        if (callback === prCallback) prReject(err);
-                                                                        else callback(err);
-                                                                });
-                                                        }
-                                                        else {
-                                                            utils
-                                                                .post("https://www.facebook.com/checkpoint/?next=https%3A%2F%2Fwww.facebook.com%2Fhome.php", jar, form, loginOptions, null, { "Referer": "https://www.facebook.com/checkpoint/?next" })
-                                                                .then(utils.saveCookies(jar))
-                                                                .then((res) => {
-                                                                    try { 
-                                                                        JSON.parse(res.body.replace(/for\s*\(\s*;\s*;\s*\)\s*;\s*/, ""));
-                                                                    } catch (ex) {
-                                                                        clearInterval(checkVerified);
-                                                                        logger.Warning(Language.VerifiedCheck);
-                                                                        if (callback === prCallback) {
-                                                                            callback = function(err, api) {
-                                                                                if (err) return prReject(err);
-                                                                                return prResolve(api);
-                                                                            };
-                                                                        }
-                                                                        return loginHelper(utils.getAppState(jar,false), email, password, loginOptions, callback);
-                                                                    }
-                                                                })
-                                                                .catch((ex) => {
-                                                                    log.error("login", ex);
-                                                                    if (callback === prCallback) prReject(ex);
-                                                                    else callback(ex);
-                                                                });
+                                                                            return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
+                                                                        })
+                                                                        .then(function(res) {
+                                                                            var headers = res.headers;
+                                                                            if (!headers.location && res.headers['set-cookie'][0].includes('checkpoint')) throw { error: "wtf ??:D" };
+                                                                            var appState = utils.getAppState(jar,false);
+                                                                            Database().set('Through2Fa', appState);
+                                                                            return loginHelper(appState, email, password, loginOptions, callback);
+                                                                        })
+                                                                    .catch((e) => callback(e));
+                                                                }
+                                                                catch (e) {
+                                                                    console.log(e)
+                                                                }
                                                             }
-                                                        return rtPromise;
+                                                            var appState = utils.getAppState(jar,false);
+                                                            if (callback === prCallback) {
+                                                                callback = function(err, api) {
+                                                                    if (err) return prReject(err);
+                                                                    return prResolve(api);
+                                                                };
+                                                            }
+                                                            Database().set('Through2Fa', appState);
+                                                            return loginHelper(appState, email, password, loginOptions, callback);
+                                                        })
+                                                        .catch(function(err) {
+                                                                if (callback === prCallback) prReject(err);
+                                                                else callback(err);
+                                                        });
                                                     }
-                                                    return approvals(Code)
+                                                    else {
+                                                        utils
+                                                            .post("https://www.facebook.com/checkpoint/?next=https%3A%2F%2Fwww.facebook.com%2Fhome.php", jar, form, loginOptions, null, { "Referer": "https://www.facebook.com/checkpoint/?next" })
+                                                            .then(utils.saveCookies(jar))
+                                                        .then(function(res) {
+                                                            try { 
+                                                                JSON.parse(res.body.replace(/for\s*\(\s*;\s*;\s*\)\s*;\s*/, ""));
+                                                            } catch (ex) {
+                                                                clearInterval(checkVerified);
+                                                                logger.Warning(Language.VerifiedCheck);
+                                                                if (callback === prCallback) {
+                                                                    callback = function(err, api) {
+                                                                        if (err) return prReject(err);
+                                                                        return prResolve(api);
+                                                                    };
+                                                                }
+                                                                let appState = utils.getAppState(jar,false);
+                                                                return loginHelper(appState, email, password, loginOptions, callback);
+                                                            }
+                                                        })
+                                                        .catch((ex) => {
+                                                            log.error("login", ex);
+                                                            if (callback === prCallback) prReject(ex);
+                                                            else callback(ex);
+                                                        });
+                                                    }
+                                                    return rtPromise;
                                                 }
-                                                catch (e) {
-                                                    logger.Error(e)
-                                                    logger.Error();
-                                                    process.exit(0);
-                                                }
-                                            } 
+                                                return approvals(Code)
+                                            }
+                                            catch (e) {
+                                                logger.Error(e)
+                                                logger.Error();
+                                                process.exit(0);
+                                            }
+                                        } 
                                     case false: {
                                         throw {
                                             error: 'login-approval',
@@ -786,13 +907,46 @@ function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
                                         };
                                     }
                                 }
+                            } else {
+                                if (!loginOptions.forceLogin) throw { error: Language.ForceLoginNotEnable };
+
+                                if (html.indexOf("Suspicious Login Attempt") > -1) form['submit[This was me]'] = "This was me";
+                                else form['submit[This Is Okay]'] = "This Is Okay";
+
+                                return utils
+                                    .post(nextURL, jar, form, loginOptions)
+                                    .then(utils.saveCookies(jar))
+                                    .then(function() {
+                                        form.name_action_selected = 'dont_save';
+
+                                        return utils.post(nextURL, jar, form, loginOptions).then(utils.saveCookies(jar));
+                                    })
+                                    .then(function(res) {
+                                        var headers = res.headers;
+
+                                        if (!headers.location && res.body.indexOf('Review Recent Login') > -1) throw { error: "Something went wrong with review recent login." };
+
+                                        var appState = utils.getAppState(jar,false);
+
+                                        return loginHelper(appState, email, password, loginOptions, callback);
+                                    })
+                                    .catch((e) => callback(e));
                             }
                         });
                 }
-                return utils.get('https://www.facebook.com/', jar, null, loginOptions).then(utils.saveCookies(jar));
-            });
+            return utils.get('https://www.facebook.com/', jar, null, loginOptions).then(utils.saveCookies(jar));
+        });
     };
 }
+
+//-[ Function backup ]-!/
+
+/**
+ * @param {string} data
+ * @param {any} globalOptions
+ * @param {any} callback
+ * @param {any} prCallback
+ */
 
 function backup(data,globalOptions, callback, prCallback) {
     try {
@@ -817,12 +971,24 @@ function backup(data,globalOptions, callback, prCallback) {
     }
 }
 
+//-[ function loginHelper ]-!/
+
+/**
+ * @param {string | any[]} appState
+ * @param {any} email
+ * @param {any} password
+ * @param {{ selfListen?: boolean; listenEvents?: boolean; listenTyping?: boolean; updatePresence?: boolean; forceLogin?: boolean; autoMarkDelivery?: boolean; autoMarkRead?: boolean; autoReconnect?: boolean; logRecordSize?: number; online?: boolean; emitReady?: boolean; userAgent?: string; pageID?: any; }} globalOptions
+ * @param {(arg0: any, arg1: undefined) => void} callback
+ * @param {(error: any, api: any) => any} [prCallback]
+ */
+
 function loginHelper(appState, email, password, globalOptions, callback, prCallback) {
     var mainPromise = null;
     var jar = utils.getJar();
 
-    try {
-        if (appState) {
+try {
+    if (appState) {
+        logger.Normal(Language.OnProcess);
             switch (Database().has("FBKEY")) {
                 case true: {
                     process.env.FBKEY = Database().get("FBKEY");
@@ -908,177 +1074,203 @@ function loginHelper(appState, email, password, globalOptions, callback, prCallb
                 console.log(e);
             }
 
+        try {
+            appState = JSON.parse(appState);
+        }
+        catch (e) {
             try {
-                appState = JSON.parse(appState);
+                appState = appState;
             }
             catch (e) {
-                try {
-                    appState = appState;
-                }
-                catch (e) {
-                    return logger.Error();
-                }
+                return logger.Error();
             }
-
-            try {
-                global.Fca.Data.AppState = appState;
-                appState.map(function(c) {
+        }
+        try {
+            global.Fca.Data.AppState = appState;
+                appState.map(function(/** @type {{ key: string; value: string; expires: string; domain: string; path: string; }} */c) {
                     var str = c.key + "=" + c.value + "; expires=" + c.expires + "; domain=" + c.domain + "; path=" + c.path + ";";
                     jar.setCookie(str, "http://" + c.domain);
                 });
                 Database().set('Backup', appState);
-                mainPromise = utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
-            } 
-            catch (e) {
-                // This will be caught by the main promise's catch block
-                throw new Error("Could not process the provided appState. It might be corrupted or invalid.");
+            mainPromise = utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
+        } 
+        catch (e) {
+            try {
+                if (Database().has('Backup')) {
+                    return backup(Database().get('Backup'),globalOptions, callback, prCallback);
+                }
+                else {
+                    logger.Warning(Language.ErrBackup);
+                    process.exit(0);
+                }
             }
-        }   
-        else {
-            mainPromise = utils
-                .get("https://www.facebook.com/", null, null, globalOptions, { noRef: true })
-                .then(utils.saveCookies(jar))
-                .then(makeLogin(jar, email, password, globalOptions, callback, prCallback))
-                .then(function() {
-                    return utils.get('https://www.facebook.com/', jar, null, globalOptions).then(utils.saveCookies(jar));
-                });
+            catch (e) {
+                logger.Warning(Language.ErrBackup);
+                process.exit(0);
+            }
+        }
+    }   
+
+    else {
+    mainPromise = utils
+         .get("https://www.facebook.com/Lazic.Kanzu", null, null, globalOptions, { noRef: true }) // for fixing
+            .then(utils.saveCookies(jar))
+            .then(makeLogin(jar, email, password, globalOptions, callback, prCallback))
+            .then(function() {
+                return utils.get('https://www.facebook.com/', jar, null, globalOptions).then(utils.saveCookies(jar));
+            });
         }
     } catch (e) {
-        // This initial catch is for synchronous errors during setup
-        log.error("login-sync", e.error || e);
-        return handleLoginFailure();
+        console.log(e);
     }
 
-    function handleRedirect(res) {
-        var reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
-        var redirect = reg.exec(res.body);
-        if (redirect && redirect[1]) {
-            return utils.get(redirect[1], jar, null, globalOptions).then(utils.saveCookies(jar));
+    function CheckAndFixErr(res, fastSwitch) {
+    if (fastSwitch) return res;
+        let reg_antierr = /7431627028261359627/gs; // =))))))
+        if (reg_antierr.test(res.body)) {
+            const Data = JSON.stringify(res.body);
+            const Dt_Check = Data.split('2Fhome.php&amp;gfid=')[1];
+            if (Dt_Check == undefined) return res
+            const fid = Dt_Check.split("\\\\")[0];//fix sau
+            if (Dt_Check == undefined || Dt_Check == "") return res
+            const final_fid = fid.split(`\\`)[0];
+            if (final_fid == undefined || final_fid == '') return res;
+            const redirectlink = redirect[1] + "a/preferences.php?basic_site_devices=m_basic&uri=" + encodeURIComponent("https://m.facebook.com/home.php") + "&gfid=" + final_fid;
+            bypass_region_err = true;
+            return utils.get(redirectlink, jar, null, globalOptions).then(utils.saveCookies(jar));
         }
+        else return res
+    }
+
+    function Redirect(res,fastSwitch) {
+    if (fastSwitch) return res;
+        var reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
+        redirect = reg.exec(res.body);
+            if (redirect && redirect[1]) return utils.get(redirect[1], jar, null, globalOptions)
         return res;
     }
 
-    var ctx, api;
-    mainPromise = mainPromise
-        .then(handleRedirect)
-        .then(function(res) {
-            let Regex_Via = /MPageLoadClientMetrics/gs; 
-            if (!Regex_Via.test(res.body)) {
-                globalOptions.userAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
-                return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
+    let redirect = [1, "https://m.facebook.com/"];
+    let bypass_region_err = false;
+        var ctx,api;
+            mainPromise = mainPromise
+                .then(res => Redirect(res))
+                .then(res => CheckAndFixErr(res))
+                //fix via login with defaut UA return WWW.facebook.com not m.facebook.com
+                .then(function(res) {
+                    if (global.OnAutoLoginProcess) return res;
+                    else {
+                        let Regex_Via = /MPageLoadClientMetrics/gs; //default for normal account, can easily get region, without this u can't get region in some case but u can run normal
+                        if (!Regex_Via.test(res.body)) {
+                            //www.facebook.com
+                            globalOptions.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.2849.68";
+                            return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true })
+                        }
+                        else return res
+                    }
+                })
+                .then(res => BypassAutomationNotification(res, jar, globalOptions, appState))
+                .then(res => Redirect(res, global.OnAutoLoginProcess))
+                .then(res => CheckAndFixErr(res, global.OnAutoLoginProcess))
+                // .then(res => {
+                //     return utils.get('https://www.facebook.com/', jar, null, globalOptions, {}).then(utils.saveCookies(jar));
+                // })
+                // .then(function(res) {
+                //     let reg_old_web = /Switch Default Site/gs;
+                //     if (reg_old_web.test(res.body)) {
+                //         let Data_Resp = JSON.stringify(res.body);
+                //         const link = Data_Resp.split('settings/site')[1].split("\"")[0].replace('\\', '')
+                //         const redirect_link2 = redirect[1] + "settings/site" + utils.cleanHTML(link)
+                //         console.log(redirect_link2)
+                //         return utils.get("https://www.facebook.com/", jar, null, globalOptions).then(utils.saveCookies(jar)); // try ag
+                //     }
+                //     else return res;
+                // })
+                // .then(function(res) {
+                //     var reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
+                //     redirect = reg.exec(res.body);
+                //         if (redirect && redirect[1]) return utils.get(redirect[1], jar, null, globalOptions).then(utils.saveCookies(jar));
+                //     return res;
+                // })
+                .then(function(res){
+                    var html = res.body,Obj = buildAPI(globalOptions, html, jar,bypass_region_err);
+                        ctx = Obj.ctx;
+                        api = Obj.api;
+                    return res;
+                });
+            if (globalOptions.pageID) {
+                mainPromise = mainPromise
+                    .then(function() {
+                        return utils.get('https://www.facebook.com/' + ctx.globalOptions.pageID + '/messages/?section=messages&subsection=inbox', ctx.jar, null, globalOptions);
+                    })
+                    .then(function(resData) {
+                        var url = utils.getFrom(resData.body, 'window.location.replace("https:\\/\\/www.facebook.com\\', '");').split('\\').join('');
+                        url = url.substring(0, url.length - 1);
+                        return utils.get('https://www.facebook.com' + url, ctx.jar, null, globalOptions);
+                    });
             }
-            return res;
-        })
-        .then(handleRedirect)
-        .then(function(res) {
-            var html = res.body;
-            var Obj = buildAPI(globalOptions, html, jar);
-            ctx = Obj.ctx;
-            api = Obj.api;
-            return res;
-        });
-
-    if (globalOptions.pageID) {
-        mainPromise = mainPromise
-            .then(function() {
-                return utils.get('https://www.facebook.com/' + ctx.globalOptions.pageID + '/messages/?section=messages&subsection=inbox', ctx.jar, null, globalOptions);
-            })
-            .then(function(resData) {
-                var url = utils.getFrom(resData.body, 'window.location.replace("https:\\/\\/www.facebook.com\\', '");').split('\\').join('');
-                url = url.substring(0, url.length - 1);
-                return utils.get('https://www.facebook.com' + url, ctx.jar, null, globalOptions);
-            });
-    }
-
-    mainPromise
-        .then(async() => { 
-            callback(null, api);
-        })
-        .catch(function(e) {
+        mainPromise
+            .then(async() => {
+                logger.Normal(getText(Language.LocalVersion,global.Fca.Version));
+                    logger.Normal(getText(Language.CountTime,global.Fca.Data.CountTime()))   
+                        logger.Normal(Language.WishMessage[Math.floor(Math.random()*Language.WishMessage.length)]);
+                    require('./Extra/ExtraUptimeRobot')();
+                callback(null, api);
+            }).catch(function(/** @type {{ error: any; }} */e) {
             log.error("login", e.error || e);
-            return handleLoginFailure();
-        });
+        callback(e);
+    });
 }
 
+ 
+/**
+ * It asks the user for their account and password, and then saves it to the database.
+ */
+
 function setUserNameAndPassWord() {
-    const rl = readline.createInterface({
+    let rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout
     });
 
-    // Clear console and show cool heading
     console.clear();
-    console.log(
-        chalk.hex('#00FFFF')(
-            figlet.textSync('PCODER', {
-                font: 'ANSI Shadow',
-                horizontalLayout: 'default',
-                verticalLayout: 'default',
-                width: 80,
-                whitespaceBreak: true
-            })
-        )
-    );
-
-    // Info box
-    const infoBox = [
-        chalk.hex('#FFB300').bold('┌─────────────────────────────┐'),
-        chalk.hex('#FFB300').bold('│ ') + chalk.hex('#00FF99')('OS: ') + chalk.hex('#FFD700')(os.type()),
-        chalk.hex('#FFB300').bold('│ ') + chalk.hex('#00FF99')('Version: ') + chalk.hex('#FFD700')(os.version()),
-        chalk.hex('#FFB300').bold('│ ') + chalk.hex('#00FF99')('FCA: ') + chalk.hex('#FFD700')(global.Fca.Version),
-        chalk.hex('#FFB300').bold('└─────────────────────────────┘')
-    ].join('\n');
-    console.log(infoBox);
-
-    // Instructions
-    console.log(
-        chalk.bgHex('#6600CC').bold(
-            '\n[!] Để sử dụng AutoLogin, bạn cần bật bảo mật 2FA cho tài khoản Facebook!\n'
-        )
-    );
-    console.log(
-        chalk.hex('#FF69B4').italic('Lưu ý: Nên dùng key 2FA dạng base32, KHÔNG dùng mã 6 số (code)!\n')
-    );
-
-    // Prompts
-    const typeAccountPrompt = Language.TypeAccount || chalk.hex('#00FFFF')("Nhập email/SĐT Facebook: ");
-    const typePasswordPrompt = Language.TypePassword || chalk.hex('#FFA500')("Nhập mật khẩu Facebook: ");
-    const type2FAPrompt = Language.Type2FA || chalk.hex('#FF00FF')("Nhập 2FA secret key (để trống nếu không có): ");
-
-    rl.question(typeAccountPrompt, (Account) => {
-        if (!Account.includes("@") && isNaN(parseInt(Account))) {
-            rl.close();
-            logger.Normal(Language.TypeAccountError || "Tài khoản không hợp lệ. Thoát...", () => process.exit(1));
-            return;
-        }
-        rl.question(typePasswordPrompt, function (Password) {
-            rl.question(type2FAPrompt, function (Secret) {
-                rl.close();
-                try {
-                    Database().set("Account", Account);
-                    Database().set("Password", Password);
-                    Database().set("TwoFAKey", Secret || "0");
-                } catch (e) {
-                    logger.Warning(Language.ErrDataBase || "Không thể lưu dữ liệu đăng nhập.");
-                    logger.Error();
-                    process.exit(0);
-                }
-                if (global.Fca.Require.FastConfig.ResetDataLogin) {
-                    global.Fca.Require.FastConfig.ResetDataLogin = false;
-                    global.Fca.Require.fs.writeFileSync(
-                        process.cwd() + '/FastConfigFca.json',
-                        JSON.stringify(global.Fca.Require.FastConfig, null, 4)
-                    );
-                }
-                logger.Success(
-                    Language.SuccessSetData ||
-                        chalk.greenBright("\n✔️ Đã lưu tài khoản! Khởi động lại bot...\n")
-                );
+    console.log(figlet.textSync('Horizon', {font: 'ANSI Shadow',horizontalLayout: 'default',verticalLayout: 'default',width: 0,whitespaceBreak: true }));
+    console.log(chalk.bold.hex('#9900FF')("[</>]") + chalk.bold.yellow(' => ') + "Operating System: " + chalk.bold.red(os.type()));
+    console.log(chalk.bold.hex('#9900FF')("[</>]") + chalk.bold.yellow(' => ') + "Machine Version: " + chalk.bold.red(os.version()));
+    console.log(chalk.bold.hex('#9900FF')("[</>]") + chalk.bold.yellow(' => ') + "Fca Version: " + chalk.bold.red(global.Fca.Version) + '\n');
+    try {
+        rl.question(Language.TypeAccount, (Account) => {
+            if (!Account.includes("@") && global.Fca.Require.utils.getType(parseInt(Account)) != "Number") return logger.Normal(Language.TypeAccountError, function () { process.exit(1) }); //Very Human
+                else rl.question(Language.TypePassword, function (Password) {
+                    rl.close();
+                    try {
+                        Database().set("Account", Account);
+                        Database().set("Password", Password);
+                    }
+                    catch (e) {
+                        logger.Warning(Language.ErrDataBase);
+                            logger.Error();
+                        process.exit(0);
+                    }
+                    if (global.Fca.Require.FastConfig.ResetDataLogin) {
+                        global.Fca.Require.FastConfig.ResetDataLogin = false;
+                        global.Fca.Require.fs.writeFileSync(process.cwd() + '/FastConfigFca.json', JSON.stringify(global.Fca.Require.FastConfig, null, 4));
+                    }
+                logger.Success(Language.SuccessSetData);
                 process.exit(1);
             });
-        });
-    });
+        })
+    }
+    catch (e) {
+        logger.Error(e)
+    }
 }
+
+/**
+ * @param {{ email: any; password: any; appState: any; }} loginData
+ * @param {{}} options
+ * @param {(error: any, api: any) => any} callback
+ */
 
 function login(loginData, options, callback) {
     if (utils.getType(options) === 'Function' || utils.getType(options) === 'AsyncFunction') {
@@ -1098,7 +1290,7 @@ function login(loginData, options, callback) {
         logRecordSize: 100,
         online: false,
         emitReady: false,
-        userAgent: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.1.2 Safari/603.3.8"
     };
     
     var prCallback = null;
@@ -1120,19 +1312,92 @@ function login(loginData, options, callback) {
         setOptions(globalOptions, {
             logLevel: "silent",
             forceLogin: true,
-            userAgent: "Mozilla/5.o (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36"
         });
         loginHelper(loginData.appState, loginData.email, loginData.password, globalOptions, callback, prCallback);
     }
-    else if (loginData.appState) {
+  else if (loginData.appState) {
         setOptions(globalOptions, options);
-        
-        let All = (getAll()).filter(i => i && i.data && i.data.messageCount !== undefined);
-        
+        let All = (getAll()).filter(i => i.data !== null);
+            All = All.filter(i => i.data.messageCount !== undefined)
             if (All.length >= 1) {
                 deleteAll(All.map(obj => obj.data.threadID));
             }
-        
+        /*
+        if (global.Fca.Require.FastConfig.Websocket_Extension.Status) {
+            const UserName = Database().get('Ws_UserName');
+            const PassWord = Database().get("Ws_PassWord");
+            if (!UserName || !PassWord || global.Fca.Require.FastConfig.Websocket_Extension.ResetData) {
+                const question = question => {
+                    const rl = readline.createInterface({
+                        input: process.stdin,
+                        output: process.stdout
+                    });
+                    var done,answ;
+                        rl.question(question, answer => {
+                            rl.close();
+                            answ = answer;
+                            done = true
+                        })
+                        deasync.loopWhile(function(){
+                            return !done;
+                        });
+                    return answ;
+                };
+                console.clear();
+                console.log(figlet.textSync('Horizon', {font: 'ANSI Shadow',horizontalLayout: 'default',verticalLayout: 'default',width: 0,whitespaceBreak: true }));
+                console.log(chalk.bold.hex('#9900FF')("[</>]") + chalk.bold.yellow(' => ') + "Operating System: " + chalk.bold.red(os.type()));
+                console.log(chalk.bold.hex('#9900FF')("[</>]") + chalk.bold.yellow(' => ') + "Machine Version: " + chalk.bold.red(os.version()));
+                console.log(chalk.bold.hex('#9900FF')("[</>]") + chalk.bold.yellow(' => ') + "Fca Version: " + chalk.bold.red(global.Fca.Version) + '\n');
+                const UserName = question(Language.Ws_TypeUserName);
+                const PassWord = question(Language.Ws_TypePassWord);
+                if (!UserName || !PassWord) {
+                    logger.Warning("Dangerous action detected! Proceeding to automatically disable websocket_extension.");
+                    global.Fca.Require.FastConfig.Websocket_Extension.Status = false;
+                    global.Fca.Require.fs.writeFileSync(process.cwd() + "/FastConfigFca.json", JSON.stringify(global.Fca.Require.FastConfig, null, "\t"));
+                }
+                else {
+                    try {
+                        Database().set('Ws_UserName', UserName);
+                        Database().set('Ws_PassWord', PassWord);
+                        logger.Success(Language.Ws_Success, function() {
+                            const speakeasy = require('speakeasy');
+                            const secret = (speakeasy.generateSecret({ length: 20 }));
+                            logger.Warning(getText(Language.Ws_2Fa, secret.base32))
+                            Database().set('Ws_2Fa', secret.base32); 
+                            if (global.Fca.Require.FastConfig.Websocket_Extension.ResetData) {
+                                global.Fca.Require.FastConfig.Websocket_Extension.ResetData = false;
+                                global.Fca.Require.fs.writeFileSync(process.cwd() + '/FastConfigFca.json', JSON.stringify(global.Fca.Require.FastConfig, null, 4));
+                            }
+                            question("Enter To Continue!");
+                            const ask = function() {
+                                const TFa_Check = question(Language.Ws_2Fa_Check)
+                                if (TFa_Check != speakeasy.totp({
+                                    secret: secret.base32,
+                                    encoding: 'base32'
+                                })) {
+                                    logger.Warning("Mã Không Đúng vui lòng nhập lại(Incorrect code, please enter again.)")
+                                    ask();
+                                }
+                                else {
+                                    logger.Success("Success!");
+                                    process.exit(1);
+                                }
+                            }
+                            return ask();
+                        });
+                    }
+                    catch (e) {
+                        console.log(e)
+                        logger.Warning("Error, auto turn off Websocket_extension");
+                        global.Fca.Require.FastConfig.Websocket_Extension.Status = false;
+                        global.Fca.Require.fs.writeFileSync(process.cwd() + "/FastConfigFca.json", JSON.stringify(global.Fca.Require.FastConfig, null, "\t"));
+                        process.exit(1);
+                    }
+                }
+            }
+        }
+**/
         switch (global.Fca.Require.FastConfig.AutoLogin) {
             case true: {
                 if (global.Fca.Require.FastConfig.ResetDataLogin) return setUserNameAndPassWord();
@@ -1175,4 +1440,5 @@ function login(loginData, options, callback) {
     }
     return returnPromise;
 }
+
 module.exports = login;

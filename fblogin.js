@@ -1,201 +1,130 @@
+// File: fblogin.js
+
 module.exports = function (globalFca) {
-    const axios = require('axios');
-    const crypto = require('crypto');
-    const { v4: uuidv4 } = require('uuid');
-    const qs = require('qs');
-    const speakeasy = require('speakeasy');
-    const fs = require('fs');
-    const path = require('path');
+  const axios = require('axios');
+  const crypto = require('crypto');
+  const { v4: uuidv4 } = require('uuid');
+  const qs = require('qs');
+  const speakeasy = require('speakeasy');
+  const fs = require('fs');
+  const path = require('path');
 
-    const Database = require('../Database');
-    const logger = globalFca.Require.logger;
+  const Database = require(globalFca.Require.paths.Database);
+  const logger = globalFca.Require.logger;
+  const Language = globalFca.Require.Language;
 
-    const getFrom = (html, start, end) => {
-        const startIdx = html.indexOf(start);
-        if (startIdx === -1) return '';
-        const endIdx = html.indexOf(end, startIdx + start.length);
-        if (endIdx === -1) return '';
-        return html.substring(startIdx + start.length, endIdx);
-    };
+  class FacebookLogin {
+    static async login() {
+      const email = Database().get("Account");
+      const password = Database().get("Password");
+      const twoFactorSecret = Database().get("TwoFAKey") || "0";
 
-    class FacebookLogin {
-        /**
-         * @param {Array<Object>} appState 
-         */
-        static async _bypassAutomationWarning(appState) {
-            try {
-                logger.Normal("Đang kiểm tra checkpoint cảnh báo tự động...");
+      if (!email || !password) {
+        logger.Warning("⚠️ Không tìm thấy email hoặc mật khẩu trong Database");
+        return { status: false, message: 'Missing account credentials' };
+      }
 
-                const c_user = (appState.find(c => c.key === "c_user") || {}).value;
-                if (!c_user) {
-                    logger.Warning("Không tìm thấy ID người dùng trong appState để kiểm tra cảnh báo.");
-                    return;
-                }
+      logger.Normal("🔄 Bắt đầu đăng nhập Facebook...");
 
-                const cookie = appState.map(c => `${c.key}=${c.value}`).join('; ');
-                const headers = {
-                    'Cookie': cookie,
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                };
+      const adid = uuidv4();
+      const device_id = uuidv4();
+      const family_device_id = uuidv4();
+      const machine_id = [...Array(24)].map(() =>
+        'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]
+      ).join('');
 
-                const { data: html, request } = await axios.get('https://www.facebook.com/', { headers });
-                const isWarningCheckpoint = request.res.responseUrl.includes('601051028565049');
+      let loginData = {
+        adid,
+        email,
+        password,
+        device_id,
+        family_device_id,
+        locale: 'en_US',
+        credentials_type: 'password',
+        generate_session_cookies: '1',
+        source: 'login',
+        machine_id,
+        fb_api_caller_class: 'com.facebook.account.login.protocol.Fb4aAuthHandler',
+        api_key: '882a8490361da98702bf97a021ddc14d',
+        access_token: '350685531728|62f8ce9f74b12f84c123cc23437a4a32'
+      };
 
-                if (isWarningCheckpoint) {
-                    logger.Warning("Phát hiện cảnh báo tự động! Đang cố gắng vượt qua...");
+      const sig = Object.entries(Object.fromEntries(Object.entries(loginData).sort()))
+        .map(([k, v]) => `${k}=${v}`).join('');
+      loginData.sig = crypto.createHash('md5').update(sig + loginData.access_token).digest('hex');
 
-                    const fb_dtsg = getFrom(html, '["DTSGInitialData",[],{"token":"', '"}');
-                    const jazoest = getFrom(html, 'jazoest=', '"');
-                    const lsd = getFrom(html, '["LSD",[],{"token":"', '"}');
+      const headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 12; SM-G988N Build/SP1A.210812.016; com.termux)',
+        'x-fb-http-engine': 'Liger',
+        'x-fb-friendly-name': 'authenticate'
+      };
 
-                    if (!fb_dtsg || !jazoest) {
-                        logger.Error("Không thể lấy đủ token cần thiết để vượt checkpoint.");
-                        return;
-                    }
+      try {
+        logger.Normal("📬 Gửi yêu cầu đăng nhập lần đầu...");
+        const res = await axios.post('https://b-graph.facebook.com/auth/login', qs.stringify(loginData), { headers });
 
-                    const formBypass = {
-                        av: c_user,
-                        fb_dtsg,
-                        jazoest,
-                        lsd,
-                        fb_api_caller_class: "RelayModern",
-                        fb_api_req_friendly_name: "FBScrapingWarningMutation",
-                        variables: JSON.stringify({}),
-                        server_timestamps: true,
-                        doc_id: "6339492849481770"
-                    };
+        const cookies = res.data.session_cookies.map(c => `${c.name}=${c.value}`).join('; ');
+        const appState = this.formatCookiesToAppState(cookies);
 
-                    const { data: bypassResult } = await axios.post("https://www.facebook.com/api/graphql/", qs.stringify(formBypass), { headers });
+        fs.writeFileSync(path.join(__dirname, '../../../appstate.json'), JSON.stringify(appState, null, 2));
+        logger.Success("✅ Đăng nhập thành công, appState đã lưu vào appstate.json");
 
-                    if (bypassResult.data?.fb_scraping_warning_clear?.success) {
-                        logger.Success("Đã vượt qua cảnh báo tự động thành công.");
-                    } else {
-                        logger.Error("Vượt checkpoint thất bại. Phản hồi không thành công.");
-                    }
-                } else {
-                    logger.Normal("Không phát hiện cảnh báo tự động.");
-                }
-            } catch (error) {
-                logger.Error("Đã xảy ra lỗi trong quá trình kiểm tra checkpoint:", error);
-            }
+        return { status: true, cookies, appState };
+
+      } catch (err) {
+        const errorData = err.response?.data?.error?.error_data;
+
+        if (!errorData || twoFactorSecret === '0') {
+          logger.Error("❌ Cần mã 2FA hoặc tài khoản sai.");
+          return { status: false, message: '2FA code needed or invalid credentials.' };
         }
 
-        static async login() {
-            const email = Database().get("Account");
-            const password = Database().get("Password");
-            const twoFactorSecret = Database().get("TwoFAKey") || "0";
+        const totpCode = speakeasy.totp({
+          secret: twoFactorSecret.replace(/\s+/g, '').toUpperCase(),
+          encoding: 'base32'
+        });
 
-            if (!email || !password) {
-                logger.Warning("Không tìm thấy email hoặc mật khẩu trong Database.");
-                return { status: false, message: 'Thiếu thông tin tài khoản' };
-            }
+        logger.Normal("📬 Gửi lại yêu cầu đăng nhập với mã 2FA...");
 
-            logger.Normal("Bắt đầu tiến trình đăng nhập Facebook...");
+        const twoFactorData = {
+          ...loginData,
+          credentials_type: 'two_factor',
+          twofactor_code: totpCode,
+          userid: errorData.uid,
+          machine_id: errorData.machine_id,
+          first_factor: errorData.login_first_factor
+        };
 
-            const adid = uuidv4();
-            const device_id = uuidv4();
-            const family_device_id = uuidv4();
-            const machine_id = [...Array(24)].map(() => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+        const sig2 = Object.entries(Object.fromEntries(Object.entries(twoFactorData).sort()))
+          .map(([k, v]) => `${k}=${v}`).join('');
+        twoFactorData.sig = crypto.createHash('md5').update(sig2 + loginData.access_token).digest('hex');
 
-            let loginData = {
-                adid, email, password, device_id, family_device_id,
-                locale: 'en_US',
-                credentials_type: 'password',
-                generate_session_cookies: '1',
-                source: 'login',
-                machine_id,
-                fb_api_caller_class: 'com.facebook.account.login.protocol.Fb4aAuthHandler',
-                api_key: '882a8490361da98702bf97a021ddc14d',
-                access_token: '350685531728|62f8ce9f74b12f84c123cc23437a4a32'
-            };
+        try {
+          const twoFARes = await axios.post('https://b-graph.facebook.com/auth/login', qs.stringify(twoFactorData), { headers });
+          const cookies = twoFARes.data.session_cookies.map(c => `${c.name}=${c.value}`).join('; ');
+          const appState = this.formatCookiesToAppState(cookies);
 
-            const sig = Object.entries(Object.fromEntries(Object.entries(loginData).sort())).map(([k, v]) => `${k}=${v}`).join('');
-            loginData.sig = crypto.createHash('md5').update(sig + loginData.access_token).digest('hex');
+          fs.writeFileSync(path.join(__dirname, '../../../appstate.json'), JSON.stringify(appState, null, 2));
+          logger.Success("✅ Đăng nhập với 2FA thành công, appState đã lưu vào appstate.json");
 
-            const headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                'x-fb-http-engine': 'Liger',
-                'x-fb-friendly-name': 'authenticate'
-            };
 
-            try {
-                logger.Normal("Đang gửi yêu cầu đăng nhập lần đầu...");
-                const res = await axios.post('https://b-graph.facebook.com/auth/login', qs.stringify(loginData), { headers });
+          return { status: true, cookies, appState };
 
-                const cookies = res.data.session_cookies;
-                const appState = cookies.map(c => ({
-                    key: c.name,
-                    value: c.value,
-                    domain: 'facebook.com',
-                    path: c.path,
-                    expires: c.expires,
-                    httpOnly: c.secure,
-                    secure: c.secure
-                }));
-
-                await this._bypassAutomationWarning(appState);
-
-                fs.writeFileSync(path.join(__dirname, '../../../appstate.json'), JSON.stringify(appState, null, 2));
-                logger.Normal("Đăng nhập thành công, appState đã được lưu vào appstate.json");
-
-                return { status: true, appState };
-
-            } catch (err) {
-                const errorData = err.response?.data?.error?.error_data;
-
-                if (!errorData || twoFactorSecret === '0') {
-                    logger.Error("Thiếu mã 2FA hoặc tài khoản sai.");
-                    return { status: false, message: 'Cần mã 2FA hoặc thông tin đăng nhập sai.' };
-                }
-
-                const totpCode = speakeasy.totp({
-                    secret: twoFactorSecret.replace(/\s+/g, '').toUpperCase(),
-                    encoding: 'base32'
-                });
-
-                logger.Normal(`Đã tạo mã 2FA: ${totpCode}`);
-                logger.Normal("Gửi lại yêu cầu đăng nhập kèm mã 2FA...");
-
-                const twoFactorData = {
-                    ...loginData,
-                    credentials_type: 'two_factor',
-                    twofactor_code: totpCode,
-                    userid: errorData.uid,
-                    machine_id: errorData.machine_id,
-                    first_factor: errorData.login_first_factor
-                };
-
-                const sig2 = Object.entries(Object.fromEntries(Object.entries(twoFactorData).sort())).map(([k, v]) => `${k}=${v}`).join('');
-                twoFactorData.sig = crypto.createHash('md5').update(sig2 + loginData.access_token).digest('hex');
-
-                try {
-                    const twoFARes = await axios.post('https://b-graph.facebook.com/auth/login', qs.stringify(twoFactorData), { headers });
-                    const cookies = twoFARes.data.session_cookies;
-                    const appState = cookies.map(c => ({
-                        key: c.name,
-                        value: c.value,
-                        domain: 'facebook.com',
-                        path: c.path,
-                        expires: c.expires,
-                        httpOnly: c.secure,
-                        secure: c.secure
-                    }));
-
-                    await this._bypassAutomationWarning(appState);
-
-                    fs.writeFileSync(path.join(__dirname, '../../../appstate.json'), JSON.stringify(appState, null, 2));
-                    logger.Normal("Đăng nhập bằng 2FA thành công, appState đã được lưu.");
-
-                    return { status: true, appState };
-
-                } catch (err2) {
-                    logger.Error("Đăng nhập với 2FA thất bại.");
-                    return { status: false, message: 'Đăng nhập với 2FA thất bại.' };
-                }
-            }
+        } catch (err2) {
+          logger.Error("❌ Đăng nhập với 2FA thất bại.");
+          return { status: false, message: 'Failed to log in with 2FA.' };
         }
+      }
     }
 
-    return FacebookLogin;
-};
+    static formatCookiesToAppState(cookieString) {
+      return cookieString.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        return value ? [...acc, { key, value, domain: 'facebook.com', path: '/' }] : acc;
+      }, []);
+    }
+  }
+
+  return FacebookLogin;
+}

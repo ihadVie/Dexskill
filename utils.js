@@ -33,7 +33,7 @@ function getHeaders(url, options, ctx, customHeader) {
         Referer: "https://www.facebook.com/",
         Host: url.replace("https://", "").split("/")[0],
         Origin: "https://www.facebook.com",
-        "user-agent": (options.userAgent || "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"),
+        "user-agent": (options.userAgent || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36"),
         Connection: "keep-alive",
         "sec-fetch-site": 'same-origin',
         "sec-fetch-mode": 'cors'
@@ -2405,11 +2405,39 @@ function formatRead(event) {
 function getFrom(str, startToken, endToken) {
     var start = str.indexOf(startToken) + startToken.length;
     if (start < startToken.length) return "";
-
     var lastHalf = str.substring(start);
     var end = lastHalf.indexOf(endToken);
-    if (end === -1) throw Error("Could not find endTime `" + endToken + "` in the given string.");
+    if (end === -1) throw Error("Could not find endTime " + endToken + " in the given string.");
     return lastHalf.substring(0, end);
+}
+
+
+function getFroms(str, startToken, endToken) {
+    //advanced search by kanzuuuuuuuuuu 
+    let results = [];
+    let currentIndex = 0;
+    
+    while (true) {
+        let start = str.indexOf(startToken, currentIndex);
+        if (start === -1) break;
+        
+        start += startToken.length;
+        
+        let lastHalf = str.substring(start);
+        let end = lastHalf.indexOf(endToken);
+        
+        if (end === -1) {
+            if (results.length === 0) {
+                throw Error("Could not find endToken `" + endToken + "` in the given string.");
+            }
+            break;
+        }
+        
+        results.push(lastHalf.substring(0, end));
+        currentIndex = start + end + endToken.length;
+    }
+    
+    return results.length === 0 ? "" : results.length === 1 ? results[0] : results;
 }
 
 /**
@@ -2659,10 +2687,43 @@ function parseAndCheckLogin(ctx, defaultFuncs, retryCount) {
             }
 
             if (res.error === 1357001) {
-    // Bỏ qua lỗi checkpoint một cách âm thầm và trả về một đối tượng rỗng
-    return {};
-}
-else return res;
+                if (global.Fca.Require.FastConfig.AutoLogin && global.Fca.Require.FastConfig.CheckPointBypass['956'].Allow) {
+                    return global.Fca.Require.logger.Warning(global.Fca.Require.Language.Index.Bypass_956, async function() {
+                        const Check = () => new Promise((re) => {
+                            defaultFuncs.get('https://facebook.com', ctx.jar).then(function(res) {
+                                if (res.headers.location && res.headers.location.includes('https://www.facebook.com/checkpoint/')) {
+                                    if (res.headers.location.includes('828281030927956')) return global.Fca.Action('Bypass', ctx, "956", defaultFuncs)
+                                    else if (res.request.uri && res.request.uri.href.includes("https://www.facebook.com/checkpoint/")) {
+                                        if (res.request.uri.href.includes('601051028565049')) {
+                                            return global.Fca.BypassAutomationNotification(undefined, ctx.jar, ctx.globalOptions, undefined ,process.env.UID)
+                                        }
+                                    }
+                                    else return global.Fca.Require.logger.Error(global.Fca.Require.Language.Index.ErrAppState);
+                                }
+                                else return global.Fca.Require.logger.Warning(global.Fca.Require.Language.Index.AutoLogin, function() {
+                                    return global.Fca.Action('AutoLogin');
+                                });
+                            })
+                        })
+                        await Check();
+                    });
+                }
+                if (res.request.uri && res.request.uri.href.includes("https://www.facebook.com/checkpoint/")) {
+                    if (res.request.uri.href.includes('601051028565049')) {
+                        return global.Fca.BypassAutomationNotification(undefined, ctx.jar, ctx.globalOptions, undefined ,process.env.UID)
+                    }
+                }
+                if (global.Fca.Require.FastConfig.AutoLogin) {
+                    return global.Fca.Require.logger.Warning(global.Fca.Require.Language.Index.AutoLogin, function() {
+                        return global.Fca.Action('AutoLogin');
+                    });
+                } 
+                else if (!global.Fca.Require.FastConfig.AutoLogin) {
+                    return global.Fca.Require.logger.Error(global.Fca.Require.Language.Index.ErrAppState);
+                }
+                return;
+            }
+            else return res;
         });
     };
 }
@@ -3011,5 +3072,6 @@ module.exports = {
     decodeClientPayload,
     getAppState,
     getAdminTextMessageType,
-    setProxy
+    setProxy,
+    getFroms
 };

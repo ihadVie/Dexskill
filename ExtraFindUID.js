@@ -14,7 +14,7 @@ async function getUIDSlow(url,api) {
 	try {
         var data = await got.post('https://api.findids.net/api/get-uid-from-username',{
             body: Form,
-            userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.79 Safari/537.36'
         })
 	} catch (e) {
         console.log(global.Fca.Data.event.threadID,e)
