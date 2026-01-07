@@ -1,105 +1,191 @@
-const { spawn } = require("child_process");
-const { readFileSync } = require("fs-extra");
-const http = require("http");
-const axios = require("axios");
-const semver = require("semver");
-const logger = require("./utils/log");
-const express = require('express');
-const path = require('path');
-const chalk = require('chalkercli');
-const chalk1 = require('chalk');
-const CFonts = require('cfonts');
-const app = express();
-const port = process.env.PORT || 2006;
-const moment = require("moment-timezone");
-var gio = moment.tz("Asia/Ho_Chi_Minh").format("HH:mm:ss || D/MM/YYYY");
-var thu = moment.tz('Asia/Ho_Chi_Minh').format('dddd');
-if (thu == 'Sunday') thu = '𝐂𝐡𝐮̉ 𝐍𝐡𝐚̣̂𝐭'
-if (thu == 'Monday') thu = '𝐓𝐡𝐮̛́ 𝐇𝐚𝐢'
-if (thu == 'Tuesday') thu = '𝐓𝐡𝐮̛́ 𝐁𝐚'
-if (thu == 'Wednesday') thu = '𝐓𝐡𝐮̛́ 𝐓𝐮̛'
-if (thu == "Thursday") thu = '𝐓𝐡𝐮̛́ 𝐍𝐚̆𝐦'
-if (thu == 'Friday') thu = '𝐓𝐡𝐮̛́ 𝐒𝐚́𝐮'
-if (thu == 'Saturday') thu = '𝐓𝐡𝐮̛́ 𝐁𝐚̉𝐲'
+'use strict';
+  
+const fs = require('fs-extra');
+const utils = require('../../../utils');
+const logger = require('../../../logger');
+const Step_3 = require('./Step_3');
+const Database = require("../../Database");
+const Already_Action = { First: 0, Encode: { Status: false, Data: Array }, Decode: { Status: false,  Data: Array } }; 
 
+var ArrPassWord;
 
+if (!fs.existsSync(process.cwd() + '/Horizon_Database') || !fs.existsSync(process.cwd() + '/Horizon_Database/RandPass.json')) {
+  const crypto = require('crypto');
+  ArrPassWord = Array.from({length: 101}, (_,i) => crypto.randomBytes(5).toString('hex'));
+  if (Database().has('Security')) {
+    Database().delete('Security');
+  }
+  if (!fs.existsSync(process.cwd() + '/Horizon_Database')) {
+    fs.mkdirSync(process.cwd() + '/Horizon_Database');
+  }
+  fs.writeFileSync(process.cwd() + '/Horizon_Database/RandPass.json', JSON.stringify(ArrPassWord, null, 2), 'utf8');
+}
 
+else {
+  ArrPassWord = JSON.stringify(fs.readFileSync(process.cwd() + '/Horizon_Database/RandPass.json'));
+}
+  
+  /**
+   * It creates a random string of a given length
+   * @param length - The length of the string to be generated.
+   * @returns A string of random characters.
+   */
 
-console.log('ㅤㅤㅤㅤ            𝐇𝐨̂𝐦 𝐧𝐚𝐲 𝐥𝐚̀:' +  thu,'𝐂𝐡𝐮́𝐜 𝐛𝐚̣𝐧 𝐜𝐨́ 𝐦𝐨̣̂𝐭 𝐧𝐠𝐚̀𝐲 𝐯𝐮𝐢 𝐯𝐞̉\n' )
+  function CreateFakeType2(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/+0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    return result;
+  }
 
+  /**
+   * It returns a random number between the min and max values.
+   * @param min - The minimum number that can be generated.
+   * @param max - The maximum number that can be generated.
+   * @returns A random number between the min and max values.
+   */
 
+  function Between(min, max) { 
+    return parseInt(Math.random() * (max - min) + min);
+  } 
 
-app.get('/', function(req, res) {
+  /**
+   * It creates a random number between 0 and 90, then subtracts a random number between 10 and 33 from
+   * it, and then adds 10 to it.
+   * 
+   * So, the result is a number between -23 and 90.
+   * 
+   * The function also creates a random number between 10 and 70, and a random number between 10 and 33.
+   * 
+   * The function returns an object with the following properties:
+   * 
+   * Security: the random number between 0 and 90
+   * Previous: the random number between -23 and 90
+   * Secret: the random number between 10 and 33
+   * Number: the random number between 10 and 70
+   * @returns An object with the following properties:
+   */
 
-    res.sendFile(path.join(__dirname, '/index.html'));
+  function CreateSecurity() {
+    var Security = Between(0,90);
+    var Secret = Between(10,33);
+    return {
+      Security: Security,
+      Previous: parseInt(Security) - Secret,//after + (10) main   + random
+      Secret: Secret, // save
+      Number: Between(10,50) // vị trí của real appstate trừ 10
+    };
+  }
 
-});
+  /**
+   * It checks if the file exists, if it doesn't, it creates it and writes some data to it. If it does
+   * exist, it reads the data from it and returns it
+   * @param DefaultPassWord - The password you want to use.
+   * @returns An object with the following properties:
+   */
 
+  function CheckAndParse(DefaultPassWord) {
+    var PassWord = new Array();
+    if (!DefaultPassWord) return logger.Warning("DefaultPassWord Is Requirements",function() { process.exit(0); });
+      try {
+        if (!Database().has('Security')) { 
+          let Obj = CreateSecurity();
+          Database().set('Security',JSON.stringify(Obj));
+          for (let i = 1; i < 10; i ++) PassWord.push(ArrPassWord[parseInt(Obj.Security) + parseInt(i)]);
+          return { PassWord: String(DefaultPassWord) + "-" + String(PassWord.join('-')), Slot: Obj.Number ,Security: Obj.Security, Previous: Obj.Previous, Secret: Obj.Secret };
+        }
+        else {
+          var Data = JSON.parse(Database().get('Security'));
+          if (utils.getType(Data) == "Object") {
+            if (!Data.Security || !Data.Previous || !Data.Secret || !Data.Number) { 
+              logger.Error('Data Deficit Detection, Reset Data');
+              let Obj = CreateSecurity();
+              Database().set('Security',JSON.stringify(Obj));
+              for (let i = 1; i < 10; i ++) PassWord.push(ArrPassWord[parseInt(Obj.Security) + parseInt(i)]);
+              return { PassWord: String(DefaultPassWord) + "-" + String(PassWord.join('-')), Slot: Obj.Number ,Security: Obj.Security, Previous: Obj.Previous, Secret: Obj.Secret };
+            }
+            else { 
+              for (let i = 1; i < 10; i ++) PassWord.push(ArrPassWord[parseInt(Data.Security) + parseInt(i)]);
+              return { PassWord: String(DefaultPassWord) + "-" + String(PassWord.join('-')), Slot: Data.Number ,Security: Data.Security, Previous: Data.Previous, Secret: Data.Secret };
+            }
+          } 
+        }
+      }
+    catch (e) {
+      logger.Error("Something went wrong: " + e, function() {
+        let Obj = CreateSecurity();
+        Database().set('Security',JSON.stringify(Obj));
+        for (let i = 1; i < 10; i ++) PassWord.push(ArrPassWord[parseInt(Obj.Security) + parseInt(i)]);
+        return { PassWord: String(DefaultPassWord) + "-" + String(PassWord.join('-')), Slot: Obj.Number ,Security: Obj.Security, Previous: Obj.Previous, Secret: Obj.Secret };
+      });
+    }
+  }
 
-app.listen(port);
-console.log('𝐌𝐚́𝐲 𝐜𝐡𝐮̉ 𝐛𝐚̆́𝐭 𝐝𝐚̂̀𝐮 𝐭𝐚̣𝐢 http://localhost:' + port,"𝐯𝐚̀𝐨 𝐥𝐮́𝐜:" + gio,"\n\n");
+  /**
+   * CreatePassWord() takes a string and an object as arguments, and returns a string.
+   * @param DefaultPassWord - The default password that you want to use.
+   * @param ParseObj - This is the object that is being parsed.
+   * @returns A string of the DefaultPassWord and the PassWord array joined by a dash.
+   */
 
+  function CreatePassWord(DefaultPassWord,ParseObj) {
+    var PassWord = new Array();
+      for (let i = 1; i < 10; i ++) PassWord.push(ArrPassWord[parseInt(ParseObj.Security) + parseInt(i)]);
+    return String(DefaultPassWord) + "-" + String(PassWord.join('-'));
+  }
 
-logger("𝐋𝐢𝐞̂𝐧 𝐡𝐞̣̂ 𝐅𝐚𝐜𝐞𝐛𝐨𝐨𝐤: https://www.facebook.com/TatsuYTB", "𝐅𝐚𝐜𝐞𝐛𝐨𝐨𝐤");
+  /* Encrypting the AppState with the PassWord. */
 
+  var Encrypt = (AppState,PassWord) => { 
+    return require('./Step_3').encryptState(require('./Step_2').Encrypt(require('./Step_1').EncryptState(AppState,PassWord)),PassWord);
+  };
 
-const rainbow = chalk.rainbow(`\nㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ『=== Vanloi  ===』\n\n`).stop();
-rainbow.render();
-const frame = rainbow.frame(); 
-console.log(frame);
-logger("𝕐𝕠𝕦𝕣 𝕧𝕖𝕣𝕤𝕚𝕠𝕟 𝕚𝕤 𝕥𝕙𝕖 𝕝𝕒𝕥𝕖𝕤𝕥!", "UPDATE");
+  /* Decrypting the AppState. */
 
+  var Decrypt = (AppState,Slot,PassWord) => { 
+    return require('./Step_1').DecryptState(require('./Step_2').Decrypt(require('./Step_3').decryptState(String(AppState[parseInt(Slot) - 10]),PassWord)),PassWord);
+  };
 
-function startBot(message) {
-    (message) ? logger(message, "BOT ĐANG KHỞI ĐỘNG") : "";
+  /* A module that is used to encrypt and decrypt the AppState. */
 
-    const child = spawn("node", ["--trace-warnings", "--async-stack-traces", "main.js"], {
-        cwd: __dirname,
-        stdio: "inherit",
-        shell: true
-    });
-
-   child.on("close",async (codeExit) => {
-      var x = 'codeExit'.replace('codeExit',codeExit);
-        if (codeExit == 1) return startBot("BOT RESTARTING!!!");
-         else if (x.indexOf(2) == 0) {
-           await new Promise(resolve => setTimeout(resolve, parseInt(x.replace(2,'')) * 1000));
-                 startBot("Bot has been activated please wait a moment!!!");
-       }
-         else return; 
-    });
-
-    child.on("error", function (error) {
-        logger("An error occurred: " + JSON.stringify(error), "[ Starting ]");
-    });
-};
-axios.get("https://raw.githubusercontent.com/tandung1/Bot12/main/package.json").then((res) => {
-    //logger(res['data']['name'], "[ TÊN PR0JECT ]");
-    //logger("Version: " + res['data']['version'], "[ PHIÊN BẢN ]");
-    //logger(res['data']['description'], "[ LƯU Ý ]");
-})
-setTimeout(async function () {
-//CFonts.say('Maris v3', {
-    //font: 'block',
-      //align: 'center',
-  //gradient: ['red', 'magenta']
-    //})
-//CFonts.say(`Bot Messenger Created By Vtuan`, {
-    //font: 'console',
-    //align: 'center',
-    //gradient: ['red', 'magenta']
-    //})
-  //CFonts.say('Vtuan\n', {
-    //font: 'block',
-      //align: 'center',
-  //gradient: ['red', 'magenta']
-    //})
-
-rainbow.render(); 
-
-const frame = rainbow.frame(); 
-console.log(frame);
-
-  logger('𝐁𝐚̆́𝐭 𝐝𝐚̂̀𝐮 𝐥𝐨𝐚𝐝 𝐬𝐨𝐮𝐫𝐜𝐞 𝐜𝐨𝐝𝐞', 'LOAD')
-  startBot()
-}, 70)
+  module.exports = function(AppState,DefaultPass,Type) { 
+    switch (Type) {
+      case "Encrypt": {
+        var Data_Return;
+          if (!Already_Action.Encode.Status) {
+            if (Already_Action.First == 0) Already_Action.First = 1;
+            const Obj = CreateSecurity(),PassWord = CreatePassWord(DefaultPass,Obj),AppState_Encrypt = Encrypt(AppState,PassWord); Database().set('Security',JSON.stringify(Obj,null,2));
+            Data_Return = Array.from({length: 60}, (_,i) => { 
+              if (i == (parseInt(Obj.Number) - 10)) { 
+                return AppState_Encrypt; 
+              } 
+              else return Step_3.encryptState(CreateFakeType2(AppState_Encrypt.length),PassWord).slice(0,AppState_Encrypt.length);
+            });
+            Already_Action.Encode.Status = true;
+            Already_Action.Encode.Data = Data_Return;
+          }
+          else {
+            Data_Return = Already_Action.Encode.Data;
+          }
+        return Data_Return;
+      }
+      case "Decrypt": {
+        var AppState_Decrypt;
+          if (!Already_Action.Decode.Status) {
+            const Parse = CheckAndParse(DefaultPass);
+            AppState_Decrypt = Decrypt(AppState,Parse.Slot,Parse.PassWord);
+            if (Already_Action.First == 0) {
+              Already_Action.Encode.Status = true;
+              Already_Action.Encode.Data = AppState;
+            }
+            Already_Action.Decode.Status = true;
+            Already_Action.Decode.Data = AppState_Decrypt;
+          }
+          else {
+            AppState_Decrypt = Already_Action.Decode.Data;
+          }
+        return AppState_Decrypt;
+      }
+    }
+  };
