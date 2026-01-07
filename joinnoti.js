@@ -1,78 +1,120 @@
-const { existsSync, writeFileSync, mkdirSync, readFileSync } = require("fs-extra");
-const { join } = require("path");
-
 module.exports.config = {
-    name: "joinnoti",
-    version: "1.1.0",
-    hasPermssion: 1,
-    credits: "Vanloi",
-    description: "Quản lý tin nhắn chào tùy biến cho từng nhóm với biến {name}, {author}...",
-    commandCategory: "Quản Lí Box",
-    usages: "[add <message> /remove /on /off]",
-    cooldowns: 0
+  name: "joinNoti",
+  eventType: ["log:subscribe"],
+  version: "1.0.1",
+  credits: "Vanloi",
+  description: "thông báo"
 };
 
-const pathCache = join(__dirname, "data");
-const pathData = join(pathCache, "joinNoti.json");
+module.exports.run = async function({ api, event, Users }) {
+  const { threadID, logMessageData } = event;
+  const pathData = require("path").join(__dirname, "../commands/data/joinNoti.json");
+  const { readFileSync } = require("fs-extra");
+  const moment = require("moment-timezone");
 
-module.exports.onLoad = () => {
-    if (!existsSync(pathCache)) mkdirSync(pathCache, { recursive: true });
-    if (!existsSync(pathData)) writeFileSync(pathData, "[]", "utf-8");
-};
+  const MAX_MENTIONS = 5;
+  const MAX_SHOW_NAMES = 8;
 
-module.exports.run = async function({ api, event, args }) {
-    const { threadID, messageID } = event;
+  const addedParticipants = logMessageData?.addedParticipants || [];
+  if (!addedParticipants.length) return;
 
-    let dataJson;
-    try { dataJson = JSON.parse(readFileSync(pathData, "utf-8")); } 
-    catch { dataJson = []; writeFileSync(pathData, JSON.stringify([]), "utf-8"); }
+  const botID = api.getCurrentUserID();
+  const botAdded = addedParticipants.some(p => p.userFbId == botID);
 
-    let thisThread = dataJson.find(i => i.threadID == threadID) || { threadID, message: null, enable: true };
+  if (botAdded) {
+      await api.changeNickname(
+          `[ ${global.config.PREFIX} ] • ${global.config.BOTNAME || "Bot"}`,
+          threadID,
+          botID
+      );
+      return api.sendMessage(`[𝐊𝐞̂́𝐭 𝐍𝐨̂́𝐢 𝐓𝐡𝐚̀𝐧𝐡 𝐂𝐨̂𝐧𝐠]`, threadID);
+  }
 
-    const content = args.slice(1).join(" ");
+  let dataJson = [];
+  try {
+      dataJson = JSON.parse(readFileSync(pathData, "utf-8"));
+  } catch {
+      dataJson = [];
+  }
 
-    switch (args[0]) {
-        case "add":
-            if (!content) return api.sendMessage("→ Bạn chưa nhập tin nhắn chào!", threadID, messageID);
-            thisThread.message = content;
-            if (!dataJson.some(i => i.threadID == threadID)) dataJson.push(thisThread);
-            writeFileSync(pathData, JSON.stringify(dataJson, null, 4), "utf-8");
-            return api.sendMessage(`→ Cấu hình tin nhắn chào thành công!`, threadID, messageID);
+  const thisThread = dataJson.find(i => i.threadID == threadID) || { message: null, enable: true };
+  if (!thisThread.enable) return;
 
-        case "remove":
-            thisThread.message = null;
-            const index = dataJson.findIndex(i => i.threadID == threadID);
-            if (index !== -1) dataJson.splice(index, 1);
-            writeFileSync(pathData, JSON.stringify(dataJson, null, 4), "utf-8");
-            return api.sendMessage("→ Xóa cấu hình tin nhắn chào thành công!", threadID, messageID);
+  const defaultTemplates = [
+      "{emj} Chào mừng {name} đến {threadName}\n👥 Thành viên #{soThanhVien} 💝",
+      "{emj} Welcome {name}!\n🏡 {threadName} • 👥 #{soThanhVien}",
+      "{emj} {name} đã vào nhóm!\n👥 Member #{soThanhVien} • Chúc vui vẻ 💕",
+      "{emj} Xin chào {name}\n🎉 {threadName} • 👥 #{soThanhVien}"
+  ];
+  const msgTemplate = thisThread.message || defaultTemplates[Math.floor(Math.random() * defaultTemplates.length)];
 
-        case "on":
-            thisThread.enable = true;
-            if (!dataJson.some(i => i.threadID == threadID)) dataJson.push(thisThread);
-            writeFileSync(pathData, JSON.stringify(dataJson, null, 4), "utf-8");
-            return api.sendMessage("→ Đã bật joinNoti cho nhóm này!", threadID, messageID);
+  const nameArray = [];
+  const mentions = [];
 
-        case "off":
-            thisThread.enable = false;
-            if (!dataJson.some(i => i.threadID == threadID)) dataJson.push(thisThread);
-            writeFileSync(pathData, JSON.stringify(dataJson, null, 4), "utf-8");
-            return api.sendMessage("→ Đã tắt joinNoti cho nhóm này!", threadID, messageID);
+  for (const p of addedParticipants) {
+      if (p.userFbId == botID) continue;
+      const userName = p.fullName || "Người dùng mới";
+      nameArray.push(userName);
+      if (mentions.length < MAX_MENTIONS) {
+          mentions.push({ tag: userName, id: p.userFbId });
+      }
 
-        default:
-            return api.sendMessage(
-`Hướng dẫn sử dụng chi tiết:
-#joinNoti add <message>: Thêm tin nhắn chào tùy chỉnh
-   → Có thể sử dụng các biến:
-      {name}        : Tên thành viên mới
-      {author}      : Tên người thêm
-      {threadName}  : Tên nhóm
-      {soThanhVien} : Số lượng thành viên hiện tại
-      {get}         : Buổi trong ngày
-      {bok}         : Ngày tháng hiện tại
-      Ví dụ: {name} đã tham gia vào buổi {get} ngày {bok} là thành viên số {soThanhVien}
-#joinNoti remove: Xóa tin nhắn chào
-#joinNoti on: Bật joinNoti cho nhóm
-#joinNoti off: Tắt joinNoti cho nhóm`, threadID, messageID
-            );
-    }
+      if (!global.data.allUserID.includes(p.userFbId)) {
+          await Users.createData(p.userFbId, { name: userName, data: {} });
+          global.data.userName.set(p.userFbId, userName);
+          global.data.allUserID.push(p.userFbId);
+      }
+  }
+
+  if (nameArray.length == 0) return;
+
+  const threadInfo = await api.getThreadInfo(threadID);
+  let authorName = "link join";
+  try {
+      const authorData = await Users.getData(event.author);
+      authorName = authorData?.name || authorName;
+  } catch (error) {
+      authorName = "link join";
+  }
+
+  const time = moment.tz("Asia/Ho_Chi_Minh");
+  const gio = parseInt(time.format("HH"));
+  const bok = time.format("DD/MM/YYYY");
+
+  let buoi = "𝐁𝐮𝐨̂̉𝐢 𝐒𝐚́𝐧𝐠";
+  if (gio >= 11) buoi = "𝐁𝐮𝐨̂̉𝐢 𝐓𝐫𝐮̛𝐚";
+  if (gio >= 14) buoi = "𝐁𝐮𝐨̂̉𝐢 𝐂𝐡𝐢Ề𝐮";
+  if (gio >= 19) buoi = "𝐁𝐮𝐨̂̉𝐢 𝐓𝐨̂́𝐢";
+
+  const emojiByTime = () => {
+      if (gio <= 10) return ["☀️", "🌤️", "🌞", "🍀", "🌼"];
+      if (gio <= 13) return ["🌤️", "🍱", "🥤", "😋", "🌻"];
+      if (gio <= 18) return ["🌇", "🍃", "✨", "🧡", "🏙️"];
+      return ["🌙", "⭐", "🌌", "💫", "🫶"];
+  };
+  const emojiList = emojiByTime();
+  const emj = emojiList[Math.floor(Math.random() * emojiList.length)];
+
+  const addedCount = nameArray.length;
+  const extraCount = Math.max(0, addedCount - MAX_SHOW_NAMES);
+  const displayNames = extraCount > 0
+      ? `${nameArray.slice(0, MAX_SHOW_NAMES).join(", ")} … (+${extraCount})`
+      : nameArray.join(", ");
+
+  const compactMessage = "{emj} Chào mừng {count} thành viên mới đến {threadName}\n👥 Hiện tại: {soThanhVien} thành viên 💝";
+  const finalTemplate = addedCount > MAX_MENTIONS ? compactMessage : msgTemplate;
+  const finalMentions = addedCount > MAX_MENTIONS ? [] : mentions;
+
+  const msg = finalTemplate
+      .replace(/\{name}/g, displayNames)
+      .replace(/\{type}/g, addedCount > 1 ? "𝐜𝐚́𝐜 𝐛𝐚̣𝐧" : "𝐛𝐚̣𝐧")
+      .replace(/\{soThanhVien}/g, threadInfo.participantIDs.length)
+      .replace(/\{threadName}/g, threadInfo.threadName || "Nhóm chat")
+      .replace(/\{author}/g, authorName)
+      .replace(/\{get}/g, buoi)
+      .replace(/\{bok}/g, bok)
+      .replace(/\{emj}/g, emj)
+      .replace(/\{count}/g, addedCount);
+
+  return api.sendMessage({ body: msg, mentions: finalMentions }, threadID);
 };

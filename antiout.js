@@ -1,27 +1,22 @@
 module.exports.config = {
     name: "antiout",
-    version: "1.0.1",
-    credits: "DungUwU - Modified by GPT",
-    hasPermssion: 1,
-    description: "Bật tắt antiout",
-    usages: "antiout on/off",
-    commandCategory: "Quản Lí Box",
-    cooldowns: 0
+    eventType: ["log:unsubscribe"],
+    version: "0.0.1",
+    credits: "Vanloi",
+    description: "Listen events"
 };
 
-module.exports.run = async ({ api, event, Threads }) => {
+module.exports.run = async({ event, api, Threads, Users }) => {
     let data = (await Threads.getData(event.threadID)).data || {};
-    if (typeof data["antiout"] == "undefined" || data["antiout"] == false) {
-        data["antiout"] = true;
-    } else {
-        data["antiout"] = false;
+    if (!data.antiout) return;
+    if (event.logMessageData.leftParticipantFbId == api.getCurrentUserID()) return;
+    const name = global.data.userName.get(event.logMessageData.leftParticipantFbId) || await Users.getNameUser(event.logMessageData.leftParticipantFbId);
+    const type = (event.author == event.logMessageData.leftParticipantFbId) ? "tự rời" : "bị quản trị viên đuổi";
+    if (type == "tự rời") {
+        api.addUserToGroup(event.logMessageData.leftParticipantFbId, event.threadID, (error, info) => {
+            if (error) {
+                api.sendMessage(`[ANTIOUT] 𝐊𝐡𝐨̂𝐧𝐠 𝐭𝐡𝐞̂̉ 𝐦𝐨̛̀𝐢 ${name} 𝐯𝐚̀𝐨 𝐥𝐚̣𝐢 𝐧𝐡𝐨́𝐦 `, event.threadID)
+            } else api.sendMessage(`[ANTIOUT] 𝐃𝐚̃ 𝐦𝐨̛̀𝐢 ${name} 𝐯𝐚̀𝐨 𝐥𝐚̣𝐢 𝐧𝐡𝐨́𝐦`, event.threadID);
+        })
     }
-
-    await Threads.setData(event.threadID, { data });
-    global.data.threadData.set(parseInt(event.threadID), data);
-
-    return api.sendMessage(
-        `✅ Đã ${(data["antiout"] == true) ? "bật" : "tắt"} thành công chế độ antiout!${(data["antiout"] == true) ? "\n⚠️ Lưu ý: Có thể không hoạt động với những người đã chặn bot hoặc chưa kết bạn với bot." : ""}`,
-        event.threadID
-    );
-};
+}
