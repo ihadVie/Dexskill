@@ -1,0 +1,4 @@
+
+
+# 5. Ghi chú
+- Người chơi có thể dùng **cancau ghep** để ghép mảnh thành cần câu Vô Hạn nếu đủ 4 mảnh.
